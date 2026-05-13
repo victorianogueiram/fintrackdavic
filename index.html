@@ -6,7 +6,7 @@
   <title>Fintrack — Finanças Pessoais</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="app">
@@ -46,10 +46,15 @@
         </div>
         <div class="search-group">
           <input class="search-input" type="text" id="search" placeholder="Buscar transações...">
-          <select id="cat-filter">
-            <option value="">Todas as categorias</option>
-          </select>
         </div>
+      </section>
+      <section class="filters-bar">
+        <div class="type-tabs" id="type-tabs">
+          <button class="type-tab active" data-type="all">Tudo</button>
+          <button class="type-tab" data-type="expense">Despesas</button>
+          <button class="type-tab" data-type="income">Receitas</button>
+        </div>
+        <div class="cat-pills" id="cat-pills"></div>
       </section>
 
       <section class="cards" id="summary-cards">
@@ -66,11 +71,6 @@
           <div class="card-label">Fatura Inter</div>
           <div class="card-val neg" id="c-inter-fat">R$ 0,00</div>
           <div class="card-sub" id="c-inter-sub">cartão de crédito</div>
-        </div>
-        <div class="card">
-          <div class="card-label">A guardar</div>
-          <div class="card-val" id="c-bal">R$ 0,00</div>
-          <div class="card-sub" id="c-bal-s">Itaú − fatura Inter</div>
         </div>
         <div class="card">
           <div class="card-label">Reserva acumulada</div>

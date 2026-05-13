@@ -25,6 +25,8 @@ let state = {
 
 let editingId = null;
 let activePeriod = '30d';
+let activeType = 'all';
+let activeCat = '';
 
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
@@ -370,18 +372,32 @@ document.getElementById('period-tabs').addEventListener('click', function (e) {
   render();
 });
 
+document.getElementById('type-tabs').addEventListener('click', function (e) {
+  const tab = e.target.closest('.type-tab');
+  if (!tab) return;
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  activeType = tab.dataset.type;
+  render();
+});
+
+function setCatFilter(cat) {
+  activeCat = activeCat === cat ? '' : cat;
+  render();
+}
+
 document.getElementById('search').addEventListener('input', render);
-document.getElementById('cat-filter').addEventListener('change', render);
 
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function getFiltered() {
   const q = document.getElementById('search').value.toLowerCase();
-  const cat = document.getElementById('cat-filter').value;
   return state.transactions.filter(t => {
     if (!inPeriod(t, activePeriod)) return false;
     if (q && !t.name.toLowerCase().includes(q) && !t.cat.toLowerCase().includes(q) && !t.rawName.toLowerCase().includes(q)) return false;
-    if (cat && t.cat !== cat) return false;
+    if (activeType === 'expense' && t.val >= 0) return false;
+    if (activeType === 'income' && t.val < 0) return false;
+    if (activeCat && t.cat !== activeCat) return false;
     return true;
   });
 }
@@ -417,10 +433,6 @@ function render() {
   document.getElementById('c-inter-fat').textContent = fmt(interFatura);
   document.getElementById('c-inter-sub').textContent = interTxCount + ' transaç' + (interTxCount === 1 ? 'ão' : 'ões');
 
-  const balEl = document.getElementById('c-bal');
-  balEl.textContent = (bal < 0 ? '-' : '') + fmt(bal);
-  balEl.className = 'card-val ' + (bal >= 0 ? 'pos' : 'neg');
-  document.getElementById('c-bal-s').textContent = bal >= 0 ? 'sobra após fatura' : 'fatura maior que saldo';
   document.getElementById('c-saved').textContent = fmt(state.savedTotal);
 
   // Meta
@@ -437,12 +449,17 @@ function render() {
     document.getElementById('meta-proj').textContent = bal < 0 ? 'Fatura maior que saldo — revise os gastos' : '—';
   }
 
-  // Category filter dropdown
-  const cats = allCats();
-  const catSel = document.getElementById('cat-filter');
-  const curVal = catSel.value;
-  catSel.innerHTML = '<option value="">Todas as categorias</option>' +
-    cats.map(c => `<option value="${c}"${c === curVal ? ' selected' : ''}>${c}</option>`).join('');
+  // Category pills
+  const usedCats = [...new Set(state.transactions.map(t => t.cat))].sort();
+  const pillsEl = document.getElementById('cat-pills');
+  if (pillsEl) {
+    pillsEl.innerHTML = usedCats.map(c => {
+      const color = CAT_COLORS[c] || '#888';
+      const isActive = activeCat === c;
+      const style = isActive ? `background:${color};border-color:${color}` : '';
+      return `<button class="cat-pill${isActive ? ' active' : ''}" data-cat="${c}" style="${style}" onclick="setCatFilter('${c}')"><span class="dot" style="background:${color}"></span>${c}</button>`;
+    }).join('');
+  }
 
   // Category grid
   const catMap = {};
