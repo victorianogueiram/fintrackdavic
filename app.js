@@ -1,0 +1,499 @@
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const STORAGE_KEY = 'fintrack_v1';
+
+const CAT_COLORS = {
+  'Alimentação': '#D85A30', 'Transporte': '#378ADD', 'Assinaturas': '#7F77DD',
+  'Saúde': '#1D9E75', 'Lazer': '#D4537E', 'Moradia': '#BA7517',
+  'Educação': '#185FA5', 'Vestuário': '#993556', 'PIX': '#888780',
+  'Receita': '#639922', 'Outros': '#888780',
+};
+
+const BASE_CATS = Object.keys(CAT_COLORS);
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+let state = {
+  transactions: [],
+  customCats: [],
+  savedTotal: 0,
+  goalTotal: 10000,
+  nextId: 1,
+  lastSaved: null,
+};
+
+let editingId = null;
+let activePeriod = '30d';
+
+// ─── Persistence ─────────────────────────────────────────────────────────────
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = { ...state, ...parsed };
+      document.getElementById('meta-goal-input').value = state.goalTotal;
+      document.getElementById('meta-saved-input').value = state.savedTotal;
+      updateSaveStatus();
+      if (state.transactions.length > 0) {
+        document.getElementById('clear-btn').style.display = 'inline-flex';
+      }
+    }
+  } catch (e) {
+    console.warn('Erro ao carregar dados:', e);
+  }
+}
+
+function saveState() {
+  try {
+    state.lastSaved = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    updateSaveStatus();
+    showSaveIndicator();
+  } catch (e) {
+    console.warn('Erro ao salvar:', e);
+  }
+}
+
+function updateSaveStatus() {
+  if (!state.lastSaved) return;
+  const d = new Date(state.lastSaved);
+  const dateStr = d.toLocaleDateString('pt-BR');
+  const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('save-status').textContent = `salvo em ${dateStr} às ${timeStr}`;
+}
+
+function showSaveIndicator() {
+  const el = document.getElementById('save-status');
+  el.style.color = 'var(--green)';
+  el.textContent = '✓ salvo';
+  setTimeout(() => { updateSaveStatus(); el.style.color = ''; }, 2000);
+}
+
+function clearAll() {
+  if (!confirm('Apagar todas as transações e configurações? Esta ação não pode ser desfeita.')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = { transactions: [], customCats: [], savedTotal: 0, goalTotal: 10000, nextId: 1, lastSaved: null };
+  document.getElementById('meta-goal-input').value = 10000;
+  document.getElementById('meta-saved-input').value = 0;
+  document.getElementById('save-status').textContent = '';
+  document.getElementById('clear-btn').style.display = 'none';
+  render();
+  toast('Dados apagados');
+}
+
+// ─── Formatting ───────────────────────────────────────────────────────────────
+
+function fmt(v) {
+  return 'R$ ' + Math.abs(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parseBrVal(str) {
+  if (!str) return 0;
+  str = str.toString().trim().replace(/"/g, '');
+  const neg = str.startsWith('-');
+  str = str.replace(/[^\d,\.]/g, '');
+  if (str.includes(',') && str.includes('.')) {
+    str = str.indexOf('.') < str.indexOf(',') ? str.replace(/\./g, '').replace(',', '.') : str.replace(/,/g, '');
+  } else if (str.includes(',')) {
+    str = str.replace(',', '.');
+  }
+  const v = parseFloat(str) || 0;
+  return neg ? -v : v;
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  str = str.trim().replace(/"/g, '');
+  // DD/MM/YYYY or DD/MM/YY or DD/MM
+  const parts = str.split('/');
+  if (parts.length >= 2) {
+    const d = parseInt(parts[0]);
+    const m = parseInt(parts[1]) - 1;
+    const y = parts[2] ? (parts[2].length === 2 ? 2000 + parseInt(parts[2]) : parseInt(parts[2])) : new Date().getFullYear();
+    return new Date(y, m, d);
+  }
+  return null;
+}
+
+function formatDate(dateStr) {
+  const d = parseDate(dateStr);
+  if (!d) return dateStr;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+// ─── Period filtering ─────────────────────────────────────────────────────────
+
+function getDateRange(period) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  switch (period) {
+    case '7d': return new Date(today - 7 * 86400000);
+    case '30d': return new Date(today - 30 * 86400000);
+    case 'week': {
+      const d = new Date(today);
+      d.setDate(d.getDate() - d.getDay());
+      return d;
+    }
+    case 'month': return new Date(today.getFullYear(), today.getMonth(), 1);
+    case 'all': return new Date(2000, 0, 1);
+    default: return new Date(today - 30 * 86400000);
+  }
+}
+
+function inPeriod(tx, period) {
+  if (period === 'all') return true;
+  const d = parseDate(tx.date);
+  if (!d) return true;
+  return d >= getDateRange(period);
+}
+
+// ─── Category helpers ─────────────────────────────────────────────────────────
+
+function allCats() {
+  const set = new Set([...BASE_CATS, ...state.customCats, ...state.transactions.map(t => t.cat)]);
+  return [...set];
+}
+
+function guessCategory(name) {
+  const n = name.toLowerCase();
+  if (/ifood|rappi|mercado|super\s?merc|padaria|restaurante|lanche|pizza|açai|acai|hamburger|subway|mcdonald|burger/.test(n)) return 'Alimentação';
+  if (/uber|99pop|cabify|taxi|gasolina|combustivel|posto|shell|petrobras|onibus|metro|ônibus/.test(n)) return 'Transporte';
+  if (/netflix|spotify|amazon\s?prime|youtube|disney|hbo|deezer|apple\s?one|globoplay|paramount/.test(n)) return 'Assinaturas';
+  if (/farmacia|drogasil|ultrafarma|remedio|hospital|clinica|plano\s?saude|unimed|amil|sulamerica/.test(n)) return 'Saúde';
+  if (/cinema|teatro|show|ingresso|bar\s|balada|lazer|viagem|hotel|airbnb/.test(n)) return 'Lazer';
+  if (/aluguel|condominio|condomínio|energia|luz\s|agua\s|água\s|internet|net\s|vivo\s|claro\s/.test(n)) return 'Moradia';
+  if (/escola|faculdade|curso|udemy|alura|livro|livraria/.test(n)) return 'Educação';
+  if (/salario|salário|pagamento\s?recebido|credito\s?em\s?conta|freelance|honorario/.test(n)) return 'Receita';
+  if (/pix\s*[\d\*]/.test(n)) return 'PIX';
+  return 'Outros';
+}
+
+// ─── Parsers ──────────────────────────────────────────────────────────────────
+
+function isDuplicate(tx) {
+  return state.transactions.some(t =>
+    t.rawName === tx.rawName && t.date === tx.date && Math.abs(t.val - tx.val) < 0.01
+  );
+}
+
+function parseItauCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const txs = [];
+  for (const line of lines) {
+    const cols = line.split(/[;\t]|(?<=\d{2}\/\d{2}\/\d{4}),/);
+    const parts = line.split(/[;,\t]/);
+    if (parts.length < 3) continue;
+    const date = parts[0]?.trim().replace(/"/g, '');
+    if (!/\d{2}\/\d{2}/.test(date)) continue;
+    const rawName = parts[1]?.trim().replace(/"/g, '') || 'Transação';
+    const val = parseBrVal(parts[2]);
+    if (!val) continue;
+    txs.push({
+      id: state.nextId++,
+      date: date.length === 5 ? date + '/' + new Date().getFullYear() : date,
+      name: rawName,
+      rawName,
+      cat: guessCategory(rawName),
+      val,
+      src: 'Itaú',
+    });
+  }
+  return txs;
+}
+
+function parseInterCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const txs = [];
+  for (const line of lines) {
+    const parts = line.split(',');
+    if (parts.length < 3) continue;
+    const date = parts[0]?.trim().replace(/"/g, '');
+    if (!/\d{2}\/\d{2}/.test(date)) continue;
+    const rawName = parts[1]?.trim().replace(/"/g, '') || 'Transação';
+    const val = parseBrVal(parts[2]);
+    if (!val) continue;
+    // Inter cartão: valores positivos são gastos
+    const finalVal = val > 0 ? -val : val;
+    txs.push({
+      id: state.nextId++,
+      date,
+      name: rawName,
+      rawName,
+      cat: guessCategory(rawName),
+      val: finalVal,
+      src: 'Inter',
+    });
+  }
+  return txs;
+}
+
+// ─── File upload ──────────────────────────────────────────────────────────────
+
+function triggerUpload(bank) {
+  document.getElementById('file-' + bank).click();
+}
+
+function handleFile(bank, file) {
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const text = e.target.result;
+    const parsed = bank === 'itau' ? parseItauCSV(text) : parseInterCSV(text);
+    if (!parsed.length) {
+      toast('Não foi possível ler o arquivo. Verifique o formato.');
+      return;
+    }
+    const novas = parsed.filter(t => !isDuplicate(t));
+    const dupes = parsed.length - novas.length;
+    state.transactions = [...novas, ...state.transactions].sort((a, b) => {
+      const da = parseDate(a.date), db = parseDate(b.date);
+      return (db || 0) - (da || 0);
+    });
+    saveState();
+    render();
+    document.getElementById('clear-btn').style.display = 'inline-flex';
+    let msg = novas.length + ' transações importadas do ' + (bank === 'itau' ? 'Itaú' : 'Inter');
+    if (dupes > 0) msg += ` (${dupes} duplicada${dupes > 1 ? 's' : ''} ignorada${dupes > 1 ? 's' : ''})`;
+    toast(msg);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+document.getElementById('file-itau').addEventListener('change', function (e) {
+  if (e.target.files[0]) handleFile('itau', e.target.files[0]);
+  this.value = '';
+});
+document.getElementById('file-inter').addEventListener('change', function (e) {
+  if (e.target.files[0]) handleFile('inter', e.target.files[0]);
+  this.value = '';
+});
+
+// ─── Meta ─────────────────────────────────────────────────────────────────────
+
+function updateGoal() {
+  const v = parseBrVal(document.getElementById('meta-goal-input').value);
+  if (v > 0) { state.goalTotal = v; saveState(); render(); }
+}
+
+function updateSaved() {
+  const v = parseBrVal(document.getElementById('meta-saved-input').value);
+  if (v >= 0) { state.savedTotal = v; saveState(); render(); }
+}
+
+// ─── Edit ─────────────────────────────────────────────────────────────────────
+
+function startEdit(id) {
+  editingId = id;
+  render();
+  setTimeout(() => {
+    const inp = document.getElementById('name-input-' + id);
+    if (inp) { inp.focus(); inp.select(); }
+  }, 40);
+}
+
+function saveEdit(id) {
+  const nameInp = document.getElementById('name-input-' + id);
+  const catSel = document.getElementById('cat-sel-' + id);
+  const tx = state.transactions.find(t => t.id === id);
+  if (tx) {
+    if (nameInp) tx.name = nameInp.value.trim() || tx.name;
+    if (catSel) {
+      const v = catSel.value;
+      if (v === '__new__') {
+        const nc = prompt('Nome da nova categoria:');
+        if (nc?.trim()) {
+          const cat = nc.trim();
+          if (!state.customCats.includes(cat)) state.customCats.push(cat);
+          tx.cat = cat;
+        }
+      } else {
+        tx.cat = v;
+      }
+    }
+  }
+  editingId = null;
+  saveState();
+  render();
+  toast('Transação salva');
+}
+
+function cancelEdit() { editingId = null; render(); }
+
+// ─── Period tabs ──────────────────────────────────────────────────────────────
+
+document.getElementById('period-tabs').addEventListener('click', function (e) {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  activePeriod = tab.dataset.period;
+  render();
+});
+
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('cat-filter').addEventListener('change', render);
+
+// ─── Render ───────────────────────────────────────────────────────────────────
+
+function getFiltered() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const cat = document.getElementById('cat-filter').value;
+  return state.transactions.filter(t => {
+    if (!inPeriod(t, activePeriod)) return false;
+    if (q && !t.name.toLowerCase().includes(q) && !t.cat.toLowerCase().includes(q) && !t.rawName.toLowerCase().includes(q)) return false;
+    if (cat && t.cat !== cat) return false;
+    return true;
+  });
+}
+
+function render() {
+  const data = getFiltered();
+  const ins = data.filter(t => t.val > 0);
+  const outs = data.filter(t => t.val < 0);
+  const totalIn = ins.reduce((a, t) => a + t.val, 0);
+  const totalOut = outs.reduce((a, t) => a + Math.abs(t.val), 0);
+  const bal = totalIn - totalOut;
+
+  // Summary cards
+  document.getElementById('c-in').textContent = fmt(totalIn);
+  document.getElementById('c-in-n').textContent = ins.length + ' transaç' + (ins.length === 1 ? 'ão' : 'ões');
+  document.getElementById('c-out').textContent = fmt(totalOut);
+  document.getElementById('c-out-n').textContent = outs.length + ' transaç' + (outs.length === 1 ? 'ão' : 'ões');
+  const balEl = document.getElementById('c-bal');
+  balEl.textContent = (bal < 0 ? '-' : '') + fmt(bal);
+  balEl.className = 'card-val ' + (bal >= 0 ? 'pos' : 'neg');
+  document.getElementById('c-bal-s').textContent = bal >= 0 ? 'resultado positivo' : 'resultado negativo';
+  document.getElementById('c-saved').textContent = fmt(state.savedTotal);
+
+  // Meta
+  const goal = state.goalTotal || 10000;
+  const pct = Math.min(100, Math.round(state.savedTotal / goal * 100));
+  document.getElementById('meta-bar').style.width = pct + '%';
+  document.getElementById('meta-pct').textContent = pct + '% atingido';
+  if (bal > 0 && state.savedTotal < goal) {
+    const months = Math.ceil((goal - state.savedTotal) / bal);
+    document.getElementById('meta-proj').textContent = `Projeção: ~${months} mês${months > 1 ? 'es' : ''}`;
+  } else {
+    document.getElementById('meta-proj').textContent = state.savedTotal >= goal ? 'Meta atingida!' : '—';
+  }
+
+  // Category filter dropdown
+  const cats = allCats();
+  const catSel = document.getElementById('cat-filter');
+  const curVal = catSel.value;
+  catSel.innerHTML = '<option value="">Todas as categorias</option>' +
+    cats.map(c => `<option value="${c}"${c === curVal ? ' selected' : ''}>${c}</option>`).join('');
+
+  // Category grid
+  const catMap = {};
+  outs.forEach(t => { catMap[t.cat] = (catMap[t.cat] || 0) + Math.abs(t.val); });
+  const maxCat = Math.max(...Object.values(catMap), 1);
+  const catGrid = document.getElementById('cat-grid');
+  if (Object.keys(catMap).length === 0) {
+    catGrid.innerHTML = '<div class="empty-state" style="padding:1.5rem">Sem gastos no período selecionado</div>';
+  } else {
+    catGrid.innerHTML = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([c, v]) => `
+      <div class="cat-item">
+        <div class="cat-row">
+          <span class="cat-name">${c}</span>
+          <span class="cat-amt">${fmt(v)}</span>
+        </div>
+        <div class="cat-bar-bg">
+          <div class="cat-bar-fill" style="width:${Math.round(v / maxCat * 100)}%;background:${CAT_COLORS[c] || '#888'}"></div>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('cat-count').textContent = Object.keys(catMap).length + ' categoria' + (Object.keys(catMap).length !== 1 ? 's' : '');
+
+  // Transaction count
+  document.getElementById('tx-count').textContent = data.length + ' transaç' + (data.length === 1 ? 'ão' : 'ões');
+
+  // Transaction list
+  const txList = document.getElementById('tx-list');
+  if (data.length === 0 && state.transactions.length === 0) {
+    txList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <p>Nenhuma transação ainda</p>
+        <p class="empty-sub">Importe um extrato do Itaú ou Inter para começar</p>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:1rem">
+          <button class="btn" onclick="triggerUpload('itau')">Importar Itaú</button>
+          <button class="btn" onclick="triggerUpload('inter')">Importar Inter</button>
+        </div>
+      </div>`;
+  } else if (data.length === 0) {
+    txList.innerHTML = '<div class="empty-state" style="padding:1.5rem">Nenhuma transação encontrada para este filtro</div>';
+  } else {
+    txList.innerHTML = data.map(t => {
+      const isEditing = editingId === t.id;
+      const color = CAT_COLORS[t.cat] || '#888';
+      const catOpts = allCats().map(c => `<option value="${c}"${c === t.cat ? ' selected' : ''}>${c}</option>`).join('');
+      const edited = t.name !== t.rawName;
+
+      if (isEditing) {
+        return `<div class="tx-item">
+          <div class="tx-icon" style="background:${t.val > 0 ? 'var(--green-bg)' : 'var(--surface-2)'}">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${t.val > 0 ? 'var(--green)' : 'var(--text-3)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              ${t.val > 0 ? '<path d="M12 19V5M5 12l7-7 7 7"/>' : '<path d="M12 5v14M19 12l-7 7-7-7"/>'}
+            </svg>
+          </div>
+          <div class="tx-info" style="flex:1">
+            <input class="tx-name-input" id="name-input-${t.id}" value="${t.name.replace(/"/g, '&quot;')}"
+              onkeydown="if(event.key==='Enter')saveEdit(${t.id});if(event.key==='Escape')cancelEdit()">
+            <div class="tx-meta" style="margin-top:4px">
+              <select class="cat-select" id="cat-sel-${t.id}">
+                ${catOpts}
+                <option value="__new__">+ Nova categoria...</option>
+              </select>
+            </div>
+          </div>
+          <div class="tx-actions">
+            <button class="btn btn-sm btn-primary" onclick="saveEdit(${t.id})">Salvar</button>
+            <button class="btn btn-sm" onclick="cancelEdit()">Cancelar</button>
+          </div>
+          <div class="tx-val ${t.val > 0 ? 'pos' : 'neg'}">${t.val > 0 ? '+' : ''}${fmt(t.val)}</div>
+        </div>`;
+      }
+
+      return `<div class="tx-item">
+        <div class="tx-icon" style="background:${t.val > 0 ? 'var(--green-bg)' : 'var(--surface-2)'}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${t.val > 0 ? 'var(--green)' : 'var(--text-3)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            ${t.val > 0 ? '<path d="M12 19V5M5 12l7-7 7 7"/>' : '<path d="M12 5v14M19 12l-7 7-7-7"/>'}
+          </svg>
+        </div>
+        <div class="tx-info">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="tx-name" title="${edited ? 'Original: ' + t.rawName : t.name}">${t.name}</span>
+            ${edited ? '<span class="edited-badge">editado</span>' : ''}
+          </div>
+          <div class="tx-meta">
+            <span class="cat-badge" style="background:${color}18;color:${color}" onclick="startEdit(${t.id})" title="Clique para editar">${t.cat}</span>
+            ${t.src ? `<span class="tx-source-badge">${t.src}</span>` : ''}
+          </div>
+        </div>
+        <div class="tx-date">${formatDate(t.date)}</div>
+        <button class="tx-edit-btn" onclick="startEdit(${t.id})" title="Editar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <div class="tx-val ${t.val > 0 ? 'pos' : 'neg'}">${t.val > 0 ? '+' : ''}${fmt(t.val)}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+loadState();
+render();

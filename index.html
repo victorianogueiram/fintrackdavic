@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fintrack — Finanças Pessoais</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app">
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="logo">fintrack</div>
+        <span class="save-status" id="save-status"></span>
+      </div>
+      <div class="topbar-right">
+        <button class="btn" onclick="triggerUpload('itau')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Itaú
+        </button>
+        <button class="btn" onclick="triggerUpload('inter')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          Inter
+        </button>
+        <input type="file" id="file-itau" accept=".csv,.xls,.xlsx" style="display:none">
+        <input type="file" id="file-inter" accept=".csv" style="display:none">
+      </div>
+    </header>
+
+    <main class="content">
+
+      <section class="filters-row">
+        <div class="period-tabs" id="period-tabs">
+          <button class="tab active" data-period="7d">7 dias</button>
+          <button class="tab" data-period="30d">30 dias</button>
+          <button class="tab" data-period="week">Esta semana</button>
+          <button class="tab" data-period="month">Este mês</button>
+          <button class="tab" data-period="all">Tudo</button>
+        </div>
+        <div class="search-group">
+          <input class="search-input" type="text" id="search" placeholder="Buscar transações...">
+          <select id="cat-filter">
+            <option value="">Todas as categorias</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="cards" id="summary-cards">
+        <div class="card">
+          <div class="card-label">Entradas</div>
+          <div class="card-val pos" id="c-in">R$ 0,00</div>
+          <div class="card-sub" id="c-in-n">0 transações</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Saídas</div>
+          <div class="card-val neg" id="c-out">R$ 0,00</div>
+          <div class="card-sub" id="c-out-n">0 transações</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Saldo do período</div>
+          <div class="card-val" id="c-bal">R$ 0,00</div>
+          <div class="card-sub" id="c-bal-s">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Reserva acumulada</div>
+          <div class="card-val pos" id="c-saved">R$ 0,00</div>
+          <div class="card-sub">total guardado</div>
+        </div>
+      </section>
+
+      <section class="meta-section">
+        <div class="meta-header">
+          <span class="meta-title">Meta de reserva</span>
+          <div class="meta-inputs">
+            <label>Guardado <input class="meta-input" type="text" id="meta-saved-input" value="0" onchange="updateSaved()"></label>
+            <label>Meta <input class="meta-input" type="text" id="meta-goal-input" value="10000" onchange="updateGoal()"></label>
+          </div>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" id="meta-bar" style="width:0%"></div></div>
+        <div class="meta-footer">
+          <span id="meta-pct">0% atingido</span>
+          <span id="meta-proj">—</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <span class="section-title">Gastos por categoria</span>
+          <span class="pill" id="cat-count">0 categorias</span>
+        </div>
+        <div class="cat-grid" id="cat-grid">
+          <div class="empty-state">Importe um extrato para ver os gastos por categoria</div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="section">
+        <div class="section-header">
+          <span class="section-title">Transações</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="pill" id="tx-count">0 transações</span>
+            <button class="btn btn-sm btn-danger" id="clear-btn" onclick="clearAll()" style="display:none">Limpar dados</button>
+          </div>
+        </div>
+        <div class="tx-list" id="tx-list">
+          <div class="empty-state">
+            <div class="empty-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <p>Nenhuma transação ainda</p>
+            <p class="empty-sub">Importe um extrato do Itaú ou Inter para começar</p>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:1rem">
+              <button class="btn" onclick="triggerUpload('itau')">Importar Itaú</button>
+              <button class="btn" onclick="triggerUpload('inter')">Importar Inter</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
