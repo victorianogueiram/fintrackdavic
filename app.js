@@ -18,6 +18,7 @@ let state = {
   customCats: [],
   savedTotal: 0,
   goalTotal: 10000,
+  itauBase: 0,
   nextId: 1,
   lastSaved: null,
 };
@@ -35,6 +36,7 @@ function loadState() {
       state = { ...state, ...parsed };
       document.getElementById('meta-goal-input').value = state.goalTotal;
       document.getElementById('meta-saved-input').value = state.savedTotal;
+      document.getElementById('itau-base-input').value = state.itauBase || 0;
       updateSaveStatus();
       if (state.transactions.length > 0) {
         document.getElementById('clear-btn').style.display = 'inline-flex';
@@ -313,6 +315,11 @@ function updateSaved() {
   if (v >= 0) { state.savedTotal = v; saveState(); render(); }
 }
 
+function updateItauBase() {
+  const v = parseBrVal(document.getElementById('itau-base-input').value);
+  if (v >= 0) { state.itauBase = v; saveState(); render(); }
+}
+
 // ─── Edit ─────────────────────────────────────────────────────────────────────
 
 function startEdit(id) {
@@ -381,21 +388,39 @@ function getFiltered() {
 
 function render() {
   const data = getFiltered();
-  const ins = data.filter(t => t.val > 0);
+
+  // Split by source for separate calculations
+  const itauData = data.filter(t => t.src === 'Itaú' || t.src === 'demo');
+  const interData = data.filter(t => t.src === 'Inter');
+
+  // Itaú: real cash flow (entries minus exits)
+  const itauIn = itauData.filter(t => t.val > 0).reduce((a, t) => a + t.val, 0);
+  const itauOut = itauData.filter(t => t.val < 0).reduce((a, t) => a + Math.abs(t.val), 0);
+  const itauBal = (state.itauBase || 0) + itauIn - itauOut;
+
+  // Inter: credit card bill (sum of expenses, ignore payments to avoid double-count)
+  const interFatura = interData.filter(t => t.val < 0).reduce((a, t) => a + Math.abs(t.val), 0);
+  const interTxCount = interData.filter(t => t.val < 0).length;
+
+  // What's left after paying the card
+  const bal = itauBal - interFatura;
+
+  // All data for category grid and tx list
   const outs = data.filter(t => t.val < 0);
-  const totalIn = ins.reduce((a, t) => a + t.val, 0);
-  const totalOut = outs.reduce((a, t) => a + Math.abs(t.val), 0);
-  const bal = totalIn - totalOut;
 
   // Summary cards
-  document.getElementById('c-in').textContent = fmt(totalIn);
-  document.getElementById('c-in-n').textContent = ins.length + ' transaç' + (ins.length === 1 ? 'ão' : 'ões');
-  document.getElementById('c-out').textContent = fmt(totalOut);
-  document.getElementById('c-out-n').textContent = outs.length + ' transaç' + (outs.length === 1 ? 'ão' : 'ões');
+  const itauBalEl = document.getElementById('c-itau-bal');
+  itauBalEl.textContent = (itauBal < 0 ? '-' : '') + fmt(itauBal);
+  itauBalEl.className = 'card-val ' + (itauBal >= 0 ? 'pos' : 'neg');
+  document.getElementById('c-itau-sub').textContent = itauData.length + ' transaç' + (itauData.length === 1 ? 'ão' : 'ões');
+
+  document.getElementById('c-inter-fat').textContent = fmt(interFatura);
+  document.getElementById('c-inter-sub').textContent = interTxCount + ' transaç' + (interTxCount === 1 ? 'ão' : 'ões');
+
   const balEl = document.getElementById('c-bal');
   balEl.textContent = (bal < 0 ? '-' : '') + fmt(bal);
   balEl.className = 'card-val ' + (bal >= 0 ? 'pos' : 'neg');
-  document.getElementById('c-bal-s').textContent = bal >= 0 ? 'resultado positivo' : 'resultado negativo';
+  document.getElementById('c-bal-s').textContent = bal >= 0 ? 'sobra após fatura' : 'fatura maior que saldo';
   document.getElementById('c-saved').textContent = fmt(state.savedTotal);
 
   // Meta
@@ -406,8 +431,10 @@ function render() {
   if (bal > 0 && state.savedTotal < goal) {
     const months = Math.ceil((goal - state.savedTotal) / bal);
     document.getElementById('meta-proj').textContent = `Projeção: ~${months} mês${months > 1 ? 'es' : ''}`;
+  } else if (state.savedTotal >= goal) {
+    document.getElementById('meta-proj').textContent = 'Meta atingida!';
   } else {
-    document.getElementById('meta-proj').textContent = state.savedTotal >= goal ? 'Meta atingida!' : '—';
+    document.getElementById('meta-proj').textContent = bal < 0 ? 'Fatura maior que saldo — revise os gastos' : '—';
   }
 
   // Category filter dropdown
@@ -529,3 +556,34 @@ function toast(msg) {
 
 loadState();
 render();
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+
+function initTheme() {
+  const saved = localStorage.getItem('fintrack_theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  applyTheme(theme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const sun = document.getElementById('icon-sun');
+  const moon = document.getElementById('icon-moon');
+  if (theme === 'dark') {
+    sun.style.display = 'block';
+    moon.style.display = 'none';
+  } else {
+    sun.style.display = 'none';
+    moon.style.display = 'block';
+  }
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('fintrack_theme', next);
+  applyTheme(next);
+}
+
+initTheme();

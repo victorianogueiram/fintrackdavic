@@ -25,7 +25,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  html:not([data-theme='light']) {
     --bg: #1a1015;
     --surface: #241318;
     --surface-2: #2e1820;
@@ -42,6 +42,24 @@
     --red: #f87171;
     --red-bg: #2d1414;
   }
+}
+
+html[data-theme='dark'] {
+  --bg: #1a1015;
+  --surface: #241318;
+  --surface-2: #2e1820;
+  --border: rgba(176,61,110,0.18);
+  --border-md: rgba(176,61,110,0.28);
+  --text: #f5eef1;
+  --text-2: #b8909f;
+  --text-3: #7a5566;
+  --accent: #d4608a;
+  --accent-bg: #2e1820;
+  --accent-hover: #e07099;
+  --green: #3ecf8e;
+  --green-bg: #0d2e1f;
+  --red: #f87171;
+  --red-bg: #2d1414;
 }
 
 body {
@@ -438,3 +456,35 @@ select:focus { outline: none; }
   .period-tabs { flex-wrap: wrap; }
   .meta-inputs { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
+
+.btn-icon {
+  padding: 7px;
+  width: 34px;
+  justify-content: center;
+}
+.card-base {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  gap: 6px;
+}
+.card-base-label {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.card-base-input {
+  width: 80px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.card-base-input:focus { outline: none; border-color: var(--accent); }
