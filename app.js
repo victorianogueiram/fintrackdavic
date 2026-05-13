@@ -528,58 +528,86 @@ function render() {
   } else if (data.length === 0) {
     txList.innerHTML = '<div class="empty-state" style="padding:1.5rem">Nenhuma transação encontrada para este filtro</div>';
   } else {
-    txList.innerHTML = data.map(t => {
-      const isEditing = editingId === t.id;
-      const color = CAT_COLORS[t.cat] || '#888';
-      const catOpts = allCats().map(c => `<option value="${c}"${c === t.cat ? ' selected' : ''}>${c}</option>`).join('');
-      const edited = t.name !== t.rawName;
+    // Group by date
+    const groups = {};
+    data.forEach(t => {
+      const d = t.date || '—';
+      if (!groups[d]) groups[d] = [];
+      groups[d].push(t);
+    });
+    const sortedDates = Object.keys(groups).sort((a, b) => {
+      const da = parseDate(a), db = parseDate(b);
+      return (db || 0) - (da || 0);
+    });
 
-      if (isEditing) {
-        return `<div class="tx-item">
-          <div class="tx-icon" style="background:${t.val > 0 ? 'var(--green-bg)' : 'var(--surface-2)'}">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${t.val > 0 ? 'var(--green)' : 'var(--text-3)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              ${t.val > 0 ? '<path d="M12 19V5M5 12l7-7 7 7"/>' : '<path d="M12 5v14M19 12l-7 7-7-7"/>'}
-            </svg>
-          </div>
-          <div class="tx-info" style="flex:1">
-            <input class="tx-name-input" id="name-input-${t.id}" value="${t.name.replace(/"/g, '&quot;')}"
-              onkeydown="if(event.key==='Enter')saveEdit(${t.id});if(event.key==='Escape')cancelEdit()">
-            <div class="tx-meta" style="margin-top:4px">
-              <select class="cat-select" id="cat-sel-${t.id}">
-                ${catOpts}
-                <option value="__new__">+ Nova categoria...</option>
-              </select>
+    txList.innerHTML = sortedDates.map(date => {
+      const txs = groups[date];
+      const dayTotal = txs.reduce((a, t) => a + t.val, 0);
+      const d = parseDate(date);
+      const dateLabel = d ? d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase() : date;
+
+      const rows = txs.map(t => {
+        const isEditing = editingId === t.id;
+        const color = CAT_COLORS[t.cat] || '#888';
+        const catOpts = allCats().map(c => `<option value="${c}"${c === t.cat ? ' selected' : ''}>${c}</option>`).join('');
+        const edited = t.name !== t.rawName;
+        const initials = t.name.split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase() || '').join('');
+        const iconBg = t.val > 0 ? 'var(--green-bg)' : `${color}18`;
+        const iconColor = t.val > 0 ? 'var(--green)' : color;
+
+        // Bank logo
+        const bankLogo = t.src === 'Itaú'
+          ? `<div class="bank-logo bank-itau" title="Itaú">it</div>`
+          : t.src === 'Inter'
+          ? `<div class="bank-logo bank-inter" title="Inter">in</div>`
+          : '';
+
+        if (isEditing) {
+          return `<div class="tx-item">
+            <div class="tx-avatar" style="background:${iconBg};color:${iconColor}">${initials}</div>
+            <div class="tx-info" style="flex:1">
+              <input class="tx-name-input" id="name-input-${t.id}" value="${t.name.replace(/"/g, '&quot;')}"
+                onkeydown="if(event.key==='Enter')saveEdit(${t.id});if(event.key==='Escape')cancelEdit()">
+              <div class="tx-meta" style="margin-top:4px">
+                <select class="cat-select" id="cat-sel-${t.id}">
+                  ${catOpts}
+                  <option value="__new__">+ Nova categoria...</option>
+                </select>
+              </div>
             </div>
+            <div class="tx-actions">
+              <button class="btn btn-sm btn-primary" onclick="saveEdit(${t.id})">Salvar</button>
+              <button class="btn btn-sm" onclick="cancelEdit()">Cancelar</button>
+            </div>
+            <div class="tx-val ${t.val > 0 ? 'pos' : 'neg'}">${t.val > 0 ? '+' : ''}${fmt(t.val)}</div>
+          </div>`;
+        }
+
+        return `<div class="tx-item">
+          <div class="tx-avatar" style="background:${iconBg};color:${iconColor}" title="${t.name}">${initials}</div>
+          <div class="tx-info">
+            <span class="tx-name" title="${edited ? 'Original: ' + t.rawName : t.name}">${t.name}${edited ? ' <span class="edited-badge">editado</span>' : ''}</span>
           </div>
-          <div class="tx-actions">
-            <button class="btn btn-sm btn-primary" onclick="saveEdit(${t.id})">Salvar</button>
-            <button class="btn btn-sm" onclick="cancelEdit()">Cancelar</button>
+          <div class="tx-middle">
+            <span class="cat-badge" style="background:${color}15;color:${color}" onclick="startEdit(${t.id})" title="Clique para editar">${t.cat}</span>
           </div>
+          <div class="tx-bank">
+            ${bankLogo}
+            <span class="tx-bank-name">${t.src && t.src !== 'demo' ? t.src : ''}</span>
+          </div>
+          <button class="tx-edit-btn" onclick="startEdit(${t.id})" title="Editar">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
           <div class="tx-val ${t.val > 0 ? 'pos' : 'neg'}">${t.val > 0 ? '+' : ''}${fmt(t.val)}</div>
         </div>`;
-      }
+      }).join('');
 
-      return `<div class="tx-item">
-        <div class="tx-icon" style="background:${t.val > 0 ? 'var(--green-bg)' : 'var(--surface-2)'}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${t.val > 0 ? 'var(--green)' : 'var(--text-3)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            ${t.val > 0 ? '<path d="M12 19V5M5 12l7-7 7 7"/>' : '<path d="M12 5v14M19 12l-7 7-7-7"/>'}
-          </svg>
+      return `<div class="tx-group">
+        <div class="tx-group-header">
+          <span class="tx-group-date">${dateLabel}</span>
+          <span class="tx-group-total ${dayTotal >= 0 ? 'pos' : 'neg'}">${dayTotal >= 0 ? '+' : ''}${fmt(dayTotal)}</span>
         </div>
-        <div class="tx-info">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span class="tx-name" title="${edited ? 'Original: ' + t.rawName : t.name}">${t.name}</span>
-            ${edited ? '<span class="edited-badge">editado</span>' : ''}
-          </div>
-          <div class="tx-meta">
-            <span class="cat-badge" style="background:${color}18;color:${color}" onclick="startEdit(${t.id})" title="Clique para editar">${t.cat}</span>
-            ${t.src ? `<span class="tx-source-badge">${t.src}</span>` : ''}
-          </div>
-        </div>
-        <div class="tx-date">${formatDate(t.date)}</div>
-        <button class="tx-edit-btn" onclick="startEdit(${t.id})" title="Editar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
-        <div class="tx-val ${t.val > 0 ? 'pos' : 'neg'}">${t.val > 0 ? '+' : ''}${fmt(t.val)}</div>
+        ${rows}
       </div>`;
     }).join('');
   }
