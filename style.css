@@ -272,8 +272,9 @@ body {
 }
 
 /* ── Date range picker ───────────────────────────────────────────────────── */
-.tx-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
-.date-range { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.tx-filters { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.tx-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.date-range { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .date-input {
   padding: 7px 12px;
   border-radius: var(--radius-sm);
