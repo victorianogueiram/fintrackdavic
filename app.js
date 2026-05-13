@@ -468,19 +468,9 @@ function render() {
   renderBudgets(data);
   renderRules();
 
-  // Category pills
-  const usedCats = [...new Set(state.transactions.map(t => t.cat))].sort();
-  const pillsEl = document.getElementById('cat-pills');
-  if (pillsEl) {
-    pillsEl.innerHTML = usedCats.map(c => {
-      const color = CAT_COLORS[c] || '#888';
-      const isActive = activeCat === c;
-      const style = isActive ? `background:${color};border-color:${color}` : '';
-      return `<button class="cat-pill${isActive ? ' active' : ''}" data-cat="${c}" style="${style}" onclick="setCatFilter('${c}')"><span class="dot" style="background:${color}"></span>${c}</button>`;
-    }).join('');
-  }
+  // Category pills removed — filtering now via cat-grid cards only
 
-  // Category grid — now inside tx section, uses filtered data, clickable
+  // Category grid — clickable cards, active ring on selected
   const catMap = {};
   data.filter(t => t.val < 0).forEach(t => { catMap[t.cat] = (catMap[t.cat] || 0) + Math.abs(t.val); });
   const maxCat = Math.max(...Object.values(catMap), 1);
@@ -492,11 +482,12 @@ function render() {
       catGrid.innerHTML = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([c, v]) => {
         const color = CAT_COLORS[c] || '#888';
         const isActive = activeCat === c;
-        return `<div class="cat-item${isActive ? ' cat-item-active' : ''}" style="${isActive ? `box-shadow:0 0 0 2px ${color}` : ''}" onclick="setCatFilter('${c}')" role="button" style="cursor:pointer">
+        const ring = isActive ? `box-shadow:0 0 0 2px ${color};` : '';
+        return `<div class="cat-item" style="${ring}" onclick="setCatFilter('${c}')">
           <div class="cat-row">
             <span class="cat-name">${c}</span>
-            <span class="cat-amt">${fmt(v)}</span>
           </div>
+          <span class="cat-amt">${fmt(v)}</span>
           <div class="cat-bar-bg">
             <div class="cat-bar-fill" style="width:${Math.round(v/maxCat*100)}%;background:${color}"></div>
           </div>
