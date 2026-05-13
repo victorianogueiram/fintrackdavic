@@ -480,26 +480,32 @@ function render() {
     }).join('');
   }
 
-  // Category grid
+  // Category grid — now inside tx section, uses filtered data, clickable
   const catMap = {};
-  outs.forEach(t => { catMap[t.cat] = (catMap[t.cat] || 0) + Math.abs(t.val); });
+  data.filter(t => t.val < 0).forEach(t => { catMap[t.cat] = (catMap[t.cat] || 0) + Math.abs(t.val); });
   const maxCat = Math.max(...Object.values(catMap), 1);
   const catGrid = document.getElementById('cat-grid');
-  if (Object.keys(catMap).length === 0) {
-    catGrid.innerHTML = '<div class="empty-state" style="padding:1.5rem">Sem gastos no período selecionado</div>';
-  } else {
-    catGrid.innerHTML = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([c, v]) => `
-      <div class="cat-item">
-        <div class="cat-row">
-          <span class="cat-name">${c}</span>
-          <span class="cat-amt">${fmt(v)}</span>
-        </div>
-        <div class="cat-bar-bg">
-          <div class="cat-bar-fill" style="width:${Math.round(v / maxCat * 100)}%;background:${CAT_COLORS[c] || '#888'}"></div>
-        </div>
-      </div>`).join('');
+  if (catGrid) {
+    if (Object.keys(catMap).length === 0) {
+      catGrid.innerHTML = '';
+    } else {
+      catGrid.innerHTML = Object.entries(catMap).sort((a, b) => b[1] - a[1]).map(([c, v]) => {
+        const color = CAT_COLORS[c] || '#888';
+        const isActive = activeCat === c;
+        return `<div class="cat-item${isActive ? ' cat-item-active' : ''}" style="${isActive ? `box-shadow:0 0 0 2px ${color}` : ''}" onclick="setCatFilter('${c}')" role="button" style="cursor:pointer">
+          <div class="cat-row">
+            <span class="cat-name">${c}</span>
+            <span class="cat-amt">${fmt(v)}</span>
+          </div>
+          <div class="cat-bar-bg">
+            <div class="cat-bar-fill" style="width:${Math.round(v/maxCat*100)}%;background:${color}"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
   }
-  document.getElementById('cat-count').textContent = Object.keys(catMap).length + ' categoria' + (Object.keys(catMap).length !== 1 ? 's' : '');
+
+  // Category grid
 
   // Transaction count
   document.getElementById('tx-count').textContent = data.length + ' transaç' + (data.length === 1 ? 'ão' : 'ões');
