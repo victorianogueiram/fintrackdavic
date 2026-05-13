@@ -17,6 +17,10 @@
         <span class="save-status" id="save-status"></span>
       </div>
       <div class="topbar-right">
+        <button class="btn" onclick="openCatsModal()" title="Gerenciar categorias">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><line x1="14" y1="5" x2="21" y2="5"/><line x1="14" y1="12" x2="21" y2="12"/><line x1="14" y1="19" x2="21" y2="19"/></svg>
+          Categorias
+        </button>
         <button class="btn" onclick="triggerUpload('itau')">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
           Itaú
@@ -162,6 +166,32 @@
     </main>
 
     <div class="toast" id="toast"></div>
+
+    <!-- Categories Modal -->
+    <div class="modal-overlay" id="cats-modal" onclick="closeModal('cats-modal')" style="display:none">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <span class="modal-title">Gerenciar categorias</span>
+          <button class="modal-close" onclick="closeModal('cats-modal')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13px;color:var(--label-3);margin-bottom:12px">Renomeie ou exclua categorias. Transações vinculadas serão atualizadas.</p>
+          <div id="cats-list"></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--separator)">
+            <p style="font-size:12px;font-weight:600;color:var(--label-2);margin-bottom:8px">Nova categoria</p>
+            <div style="display:flex;gap:8px">
+              <input class="form-input" type="text" id="new-cat-input" placeholder="Nome da categoria" style="flex:1">
+              <button class="btn btn-primary btn-sm" onclick="addCatFromModal()">Adicionar</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary" onclick="closeModal('cats-modal')">Concluído</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Budget Modal -->
     <div class="modal-overlay" id="budget-modal" onclick="closeModal('budget-modal')" style="display:none">

@@ -871,3 +871,113 @@ document.addEventListener('keydown', e => {
     closeModal('rule-modal');
   }
 });
+
+// ─── Categories modal ─────────────────────────────────────────────────────────
+
+function openCatsModal() {
+  renderCatsList();
+  document.getElementById('cats-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('new-cat-input')?.focus(), 50);
+}
+
+function renderCatsList() {
+  const el = document.getElementById('cats-list');
+  if (!el) return;
+
+  // All cats in use across transactions + custom cats
+  const inUse = [...new Set(state.transactions.map(t => t.cat))];
+  const custom = state.customCats || [];
+  const allUsed = [...new Set([...inUse, ...custom])].sort();
+  const base = new Set(BASE_CATS);
+
+  if (!allUsed.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--label-3);text-align:center;padding:12px 0">Nenhuma categoria ainda</p>';
+    return;
+  }
+
+  el.innerHTML = allUsed.map(c => {
+    const color = CAT_COLORS[c] || '#888';
+    const count = state.transactions.filter(t => t.cat === c).length;
+    const isBase = base.has(c);
+    return `<div class="cat-modal-row" id="cat-row-${encodeURIComponent(c)}">
+      <span class="cat-modal-dot" style="background:${color}"></span>
+      <span class="cat-modal-name" id="cat-name-display-${encodeURIComponent(c)}">${c}</span>
+      <input class="cat-modal-input form-input" id="cat-name-input-${encodeURIComponent(c)}" value="${c}" style="display:none;flex:1;padding:4px 8px;font-size:13px">
+      <span class="cat-modal-count">${count} transação${count !== 1 ? 'ões' : ''}</span>
+      <div style="display:flex;gap:4px">
+        <button class="icon-btn" onclick="startRenameCat('${c}')" title="Renomear">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="icon-btn" onclick="deleteCat('${c}')" title="Excluir" style="color:var(--red)" ${count > 0 ? '' : ''}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function startRenameCat(cat) {
+  const key = encodeURIComponent(cat);
+  const display = document.getElementById(`cat-name-display-${key}`);
+  const input = document.getElementById(`cat-name-input-${key}`);
+  if (!display || !input) return;
+  display.style.display = 'none';
+  input.style.display = 'block';
+  input.focus();
+  input.select();
+  input.onkeydown = (e) => {
+    if (e.key === 'Enter') confirmRenameCat(cat);
+    if (e.key === 'Escape') { display.style.display = ''; input.style.display = 'none'; }
+  };
+  input.onblur = () => confirmRenameCat(cat);
+}
+
+function confirmRenameCat(oldCat) {
+  const key = encodeURIComponent(oldCat);
+  const input = document.getElementById(`cat-name-input-${key}`);
+  if (!input) return;
+  const newCat = input.value.trim();
+  if (!newCat || newCat === oldCat) {
+    const display = document.getElementById(`cat-name-display-${key}`);
+    if (display) { display.style.display = ''; input.style.display = 'none'; }
+    return;
+  }
+  // Update all transactions
+  state.transactions = state.transactions.map(t => t.cat === oldCat ? { ...t, cat: newCat } : t);
+  // Update customCats
+  state.customCats = state.customCats.map(c => c === oldCat ? newCat : c);
+  if (!state.customCats.includes(newCat) && !BASE_CATS.includes(newCat)) {
+    state.customCats.push(newCat);
+  }
+  saveState();
+  render();
+  renderCatsList();
+  toast(`"${oldCat}" renomeada para "${newCat}"`);
+}
+
+function deleteCat(cat) {
+  const count = state.transactions.filter(t => t.cat === cat).length;
+  const msg = count > 0
+    ? `Excluir "${cat}"? As ${count} transação(ões) vinculadas irão para "Outros".`
+    : `Excluir a categoria "${cat}"?`;
+  if (!confirm(msg)) return;
+  state.transactions = state.transactions.map(t => t.cat === cat ? { ...t, cat: 'Outros' } : t);
+  state.customCats = state.customCats.filter(c => c !== cat);
+  saveState();
+  render();
+  renderCatsList();
+  toast(`Categoria "${cat}" excluída`);
+}
+
+function addCatFromModal() {
+  const input = document.getElementById('new-cat-input');
+  const name = input?.value.trim();
+  if (!name) return;
+  if (allCats().includes(name)) { toast('Categoria já existe'); return; }
+  if (!state.customCats.includes(name)) state.customCats.push(name);
+  saveState();
+  render();
+  renderCatsList();
+  input.value = '';
+  toast(`Categoria "${name}" adicionada`);
+}
