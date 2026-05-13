@@ -48,14 +48,7 @@
           <input class="search-input" type="text" id="search" placeholder="Buscar transações...">
         </div>
       </section>
-      <section class="filters-bar">
-        <div class="type-tabs" id="type-tabs">
-          <button class="type-tab active" data-type="all">Tudo</button>
-          <button class="type-tab" data-type="expense">Despesas</button>
-          <button class="type-tab" data-type="income">Receitas</button>
-        </div>
-        <div class="cat-pills" id="cat-pills"></div>
-      </section>
+
 
       <section class="cards" id="summary-cards">
         <div class="card">
@@ -90,7 +83,6 @@
         <div class="bar-bg"><div class="bar-fill" id="meta-bar" style="width:0%"></div></div>
         <div class="meta-footer">
           <span id="meta-pct">0% atingido</span>
-          <span id="meta-proj">—</span>
         </div>
       </section>
 
@@ -113,6 +105,14 @@
             <span class="pill" id="tx-count">0 transações</span>
             <button class="btn btn-sm btn-danger" id="clear-btn" onclick="clearAll()" style="display:none">Limpar dados</button>
           </div>
+        </div>
+        <div class="tx-filters">
+          <div class="type-tabs" id="type-tabs">
+            <button class="type-tab active" data-type="all">Tudo</button>
+            <button class="type-tab" data-type="expense">Despesas</button>
+            <button class="type-tab" data-type="income">Receitas</button>
+          </div>
+          <div class="cat-pills" id="cat-pills"></div>
         </div>
         <div class="tx-list" id="tx-list">
           <div class="empty-state">

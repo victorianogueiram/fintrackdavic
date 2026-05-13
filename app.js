@@ -440,14 +440,7 @@ function render() {
   const pct = Math.min(100, Math.round(state.savedTotal / goal * 100));
   document.getElementById('meta-bar').style.width = pct + '%';
   document.getElementById('meta-pct').textContent = pct + '% atingido';
-  if (bal > 0 && state.savedTotal < goal) {
-    const months = Math.ceil((goal - state.savedTotal) / bal);
-    document.getElementById('meta-proj').textContent = `Projeção: ~${months} mês${months > 1 ? 'es' : ''}`;
-  } else if (state.savedTotal >= goal) {
-    document.getElementById('meta-proj').textContent = 'Meta atingida!';
-  } else {
-    document.getElementById('meta-proj').textContent = bal < 0 ? 'Fatura maior que saldo — revise os gastos' : '—';
-  }
+
 
   // Category pills
   const usedCats = [...new Set(state.transactions.map(t => t.cat))].sort();
