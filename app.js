@@ -149,9 +149,18 @@ function getDateRange(period) {
 }
 
 function inPeriod(tx, period) {
-  if (period === 'all') return true;
   const d = parseDate(tx.date);
   if (!d) return true;
+  if (period === 'all') return true;
+  if (period === 'custom') {
+    const fromEl = document.getElementById('date-from');
+    const toEl = document.getElementById('date-to');
+    const from = fromEl?.value ? new Date(fromEl.value + 'T00:00:00') : null;
+    const to = toEl?.value ? new Date(toEl.value + 'T23:59:59') : null;
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    return true;
+  }
   return d >= getDateRange(period);
 }
 
@@ -378,8 +387,13 @@ document.getElementById('period-tabs').addEventListener('click', function (e) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
   activePeriod = tab.dataset.period;
+  const dateRange = document.getElementById('date-range');
+  if (dateRange) dateRange.style.display = activePeriod === 'custom' ? 'flex' : 'none';
   render();
 });
+
+document.getElementById('date-from')?.addEventListener('change', render);
+document.getElementById('date-to')?.addEventListener('change', render);
 
 document.getElementById('type-tabs').addEventListener('click', function (e) {
   const tab = e.target.closest('.type-tab');

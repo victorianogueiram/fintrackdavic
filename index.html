@@ -36,18 +36,7 @@
 
     <main class="content">
 
-      <section class="filters-row">
-        <div class="period-tabs" id="period-tabs">
-          <button class="tab active" data-period="7d">7 dias</button>
-          <button class="tab" data-period="30d">30 dias</button>
-          <button class="tab" data-period="week">Esta semana</button>
-          <button class="tab" data-period="month">Este mês</button>
-          <button class="tab" data-period="all">Tudo</button>
-        </div>
-        <div class="search-group">
-          <input class="search-input" type="text" id="search" placeholder="Buscar transações...">
-        </div>
-      </section>
+
 
 
       <section class="cards" id="summary-cards">
@@ -137,12 +126,30 @@
           </div>
         </div>
         <div class="tx-filters">
-          <div class="type-tabs" id="type-tabs">
-            <button class="type-tab active" data-type="all">Tudo</button>
-            <button class="type-tab" data-type="expense">Despesas</button>
-            <button class="type-tab" data-type="income">Receitas</button>
+          <div class="period-tabs" id="period-tabs">
+            <button class="tab active" data-period="7d">7 dias</button>
+            <button class="tab" data-period="30d">30 dias</button>
+            <button class="tab" data-period="week">Esta semana</button>
+            <button class="tab" data-period="month">Este mês</button>
+            <button class="tab" data-period="all">Tudo</button>
+            <button class="tab" data-period="custom" id="tab-custom">Personalizado</button>
           </div>
-          <div class="cat-pills" id="cat-pills"></div>
+          <div class="date-range" id="date-range" style="display:none">
+            <input type="date" class="date-input" id="date-from">
+            <span class="date-sep">→</span>
+            <input type="date" class="date-input" id="date-to">
+          </div>
+          <div class="tx-filter-row">
+            <input class="search-input" type="text" id="search" placeholder="Buscar transações...">
+          </div>
+          <div class="tx-filter-row">
+            <div class="type-tabs" id="type-tabs">
+              <button class="type-tab active" data-type="all">Tudo</button>
+              <button class="type-tab" data-type="expense">Despesas</button>
+              <button class="type-tab" data-type="income">Receitas</button>
+            </div>
+            <div class="cat-pills" id="cat-pills"></div>
+          </div>
         </div>
         <div class="tx-list" id="tx-list">
           <div class="empty-state">

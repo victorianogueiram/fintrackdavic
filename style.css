@@ -270,3 +270,20 @@ body {
   .meta-inputs { flex-direction: column; align-items: flex-start; gap: 8px; }
   .section-title { font-size: 18px; }
 }
+
+/* ── Date range picker ───────────────────────────────────────────────────── */
+.tx-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.date-range { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.date-input {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--surface);
+  color: var(--label);
+  font-size: 14px;
+  font-family: var(--font);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.date-input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.date-sep { font-size: 14px; color: var(--label-3); flex-shrink: 0; }
