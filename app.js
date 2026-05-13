@@ -6,7 +6,7 @@ const CAT_COLORS = {
   'Alimentação': '#D85A30', 'Transporte': '#378ADD', 'Assinaturas': '#7F77DD',
   'Saúde': '#1D9E75', 'Lazer': '#D4537E', 'Moradia': '#BA7517',
   'Educação': '#185FA5', 'Vestuário': '#993556', 'PIX': '#888780',
-  'Receita': '#639922', 'Outros': '#888780',
+  'Receita': '#1a7a52', 'Outros': '#888780',
 };
 
 const BASE_CATS = Object.keys(CAT_COLORS);
@@ -204,24 +204,56 @@ function parseItauCSV(text) {
 }
 
 function parseInterCSV(text) {
+  // Remove BOM if present
+  text = text.replace(/^\uFEFF/, '');
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   const txs = [];
+
+  // Inter format: "Data","Lançamento","Categoria","Tipo","Valor"
+  const interCatMap = {
+    'TRANSPORTE': 'Transporte', 'SUPERMERCADO': 'Alimentação', 'RESTAURANTES': 'Alimentação',
+    'SAUDE': 'Saúde', 'ENSINO': 'Educação', 'ENTRETENIMENTO': 'Lazer',
+    'VIAGEM': 'Lazer', 'COMPRAS': 'Outros', 'SERVICOS': 'Assinaturas',
+    'VESTUARIO': 'Vestuário', 'PETSHOP': 'Saúde', 'OUTROS': 'Outros',
+  };
+
   for (const line of lines) {
-    const parts = line.split(',');
-    if (parts.length < 3) continue;
-    const date = parts[0]?.trim().replace(/"/g, '');
-    if (!/\d{2}\/\d{2}/.test(date)) continue;
-    const rawName = parts[1]?.trim().replace(/"/g, '') || 'Transação';
-    const val = parseBrVal(parts[2]);
+    // Parse quoted CSV fields
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { inQ = !inQ; continue; }
+      if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    cols.push(cur.trim());
+
+    if (cols.length < 5) continue;
+    const date = cols[0];
+    if (!/\d{2}\/\d{2}\/\d{4}/.test(date)) continue;
+
+    const rawName = cols[1] || 'Transação';
+    // Clean up name: remove trailing country code and city
+    const cleanName = rawName.replace(/\s+[A-Z]{3}\s*$/, '').replace(/\s{2,}[A-Z][A-Z\s]+$/, '').trim();
+    const interCat = cols[2]?.toUpperCase();
+    const valRaw = cols[4];
+    const val = parseBrVal(valRaw);
     if (!val) continue;
-    // Inter cartão: valores positivos são gastos
-    const finalVal = val > 0 ? -val : val;
+
+    // Pagamentos têm valor negativo no CSV (crédito na fatura), manter como positivo
+    // Compras têm valor positivo no CSV, virar negativo
+    const finalVal = val < 0 ? Math.abs(val) : -val;
+
+    // Use Inter's own category, fallback to guessCategory
+    const cat = interCatMap[interCat] || guessCategory(cleanName);
+
     txs.push({
       id: state.nextId++,
       date,
-      name: rawName,
-      rawName,
-      cat: guessCategory(rawName),
+      name: cleanName,
+      rawName: cleanName,
+      cat,
       val: finalVal,
       src: 'Inter',
     });

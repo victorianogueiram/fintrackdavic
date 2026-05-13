@@ -1,14 +1,17 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #f9f8f6;
+  --bg: #fdf5f8;
   --surface: #ffffff;
-  --surface-2: #f4f3f0;
-  --border: rgba(0,0,0,0.08);
-  --border-md: rgba(0,0,0,0.14);
-  --text: #1a1917;
-  --text-2: #6b6a67;
-  --text-3: #a09f9b;
+  --surface-2: #fce8f0;
+  --border: rgba(176,61,110,0.10);
+  --border-md: rgba(176,61,110,0.18);
+  --text: #111111;
+  --text-2: #888888;
+  --text-3: #b8a0aa;
+  --accent: #b03d6e;
+  --accent-bg: #fce8f0;
+  --accent-hover: #8f2f57;
   --green: #1a7a52;
   --green-bg: #edf7f2;
   --red: #c0392b;
@@ -18,19 +21,22 @@
   --radius-pill: 99px;
   --font: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'DM Mono', monospace;
-  --shadow: 0 1px 3px rgba(0,0,0,0.07);
+  --shadow: 0 1px 3px rgba(176,61,110,0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #141413;
-    --surface: #1e1e1c;
-    --surface-2: #272725;
-    --border: rgba(255,255,255,0.08);
-    --border-md: rgba(255,255,255,0.14);
-    --text: #f0efe9;
-    --text-2: #9e9d99;
-    --text-3: #65645f;
+    --bg: #1a1015;
+    --surface: #241318;
+    --surface-2: #2e1820;
+    --border: rgba(176,61,110,0.18);
+    --border-md: rgba(176,61,110,0.28);
+    --text: #f5eef1;
+    --text-2: #b8909f;
+    --text-3: #7a5566;
+    --accent: #d4608a;
+    --accent-bg: #2e1820;
+    --accent-hover: #e07099;
     --green: #3ecf8e;
     --green-bg: #0d2e1f;
     --red: #f87171;
@@ -67,7 +73,7 @@ body {
   font-size: 18px;
   font-weight: 500;
   letter-spacing: -0.5px;
-  color: var(--text);
+  color: var(--accent);
   font-family: var(--font-mono);
 }
 .save-status {
@@ -93,8 +99,8 @@ body {
 }
 .btn:hover { background: var(--surface-2); }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
-.btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
-.btn-primary:hover { opacity: 0.85; background: var(--text); }
+.btn-primary { background: var(--accent); color: #ffffff; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); opacity:1; }
 .btn-danger { color: var(--red); border-color: transparent; background: transparent; }
 .btn-danger:hover { background: var(--red-bg); }
 
@@ -219,7 +225,7 @@ select:focus { outline: none; }
 .bar-fill {
   height: 100%;
   border-radius: var(--radius-pill);
-  background: var(--green);
+  background: var(--accent);
   transition: width 0.6s ease;
 }
 .meta-footer {
