@@ -16,6 +16,8 @@ const BASE_CATS = Object.keys(CAT_COLORS);
 let state = {
   transactions: [],
   customCats: [],
+  budgets: [],
+  rules: [],
   savedTotal: 0,
   goalTotal: 10000,
   itauBase: 0,
@@ -280,7 +282,14 @@ function handleFile(bank, file) {
       toast('Não foi possível ler o arquivo. Verifique o formato.');
       return;
     }
-    const novas = parsed.filter(t => !isDuplicate(t));
+    const novas = parsed.filter(t => !isDuplicate(t)).map(t => {
+      for (const rule of (state.rules || [])) {
+        if (t.rawName.toLowerCase().includes(rule.match.toLowerCase())) {
+          return { ...t, cat: rule.cat, name: rule.rename || t.name };
+        }
+      }
+      return t;
+    });
     const dupes = parsed.length - novas.length;
     state.transactions = [...novas, ...state.transactions].sort((a, b) => {
       const da = parseDate(a.date), db = parseDate(b.date);
@@ -442,6 +451,9 @@ function render() {
   document.getElementById('meta-pct').textContent = pct + '% atingido';
 
 
+  renderBudgets(data);
+  renderRules();
+
   // Category pills
   const usedCats = [...new Set(state.transactions.map(t => t.cat))].sort();
   const pillsEl = document.getElementById('cat-pills');
@@ -597,3 +609,226 @@ function toggleTheme() {
 }
 
 initTheme();
+
+// ─── Rules ────────────────────────────────────────────────────────────────────
+
+function applyRules(transactions) {
+  return transactions.map(t => {
+    for (const rule of (state.rules || [])) {
+      if (t.rawName.toLowerCase().includes(rule.match.toLowerCase()) ||
+          t.name.toLowerCase().includes(rule.match.toLowerCase())) {
+        return {
+          ...t,
+          cat: rule.cat,
+          name: rule.rename || t.name,
+        };
+      }
+    }
+    return t;
+  });
+}
+
+function openRuleModal(editId) {
+  const cats = allCats();
+  const sel = document.getElementById('rule-cat-input');
+  sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  if (editId !== undefined) {
+    const rule = state.rules.find(r => r.id === editId);
+    if (rule) {
+      document.getElementById('rule-edit-id').value = editId;
+      document.getElementById('rule-match-input').value = rule.match;
+      document.getElementById('rule-rename-input').value = rule.rename || '';
+      sel.value = rule.cat;
+      document.getElementById('rule-modal-title').textContent = 'Editar regra';
+    }
+  } else {
+    document.getElementById('rule-edit-id').value = '';
+    document.getElementById('rule-match-input').value = '';
+    document.getElementById('rule-rename-input').value = '';
+    document.getElementById('rule-modal-title').textContent = 'Nova regra';
+  }
+  document.getElementById('rule-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('rule-match-input').focus(), 50);
+}
+
+function saveRule() {
+  const match = document.getElementById('rule-match-input').value.trim();
+  const cat = document.getElementById('rule-cat-input').value;
+  const rename = document.getElementById('rule-rename-input').value.trim();
+  const editId = document.getElementById('rule-edit-id').value;
+
+  if (!match) { toast('Digite o texto a identificar'); return; }
+
+  if (editId) {
+    const rule = state.rules.find(r => r.id === parseInt(editId));
+    if (rule) { rule.match = match; rule.cat = cat; rule.rename = rename; }
+  } else {
+    state.rules.push({ id: state.nextId++, match, cat, rename });
+  }
+
+  // Re-apply all rules to existing transactions
+  state.transactions = state.transactions.map(t => {
+    const original = t.rawName;
+    for (const rule of state.rules) {
+      if (original.toLowerCase().includes(rule.match.toLowerCase())) {
+        return { ...t, cat: rule.cat, name: rule.rename || t.name };
+      }
+    }
+    return t;
+  });
+
+  saveState();
+  closeModal('rule-modal');
+  render();
+  toast('Regra salva — transações atualizadas');
+}
+
+function deleteRule(id) {
+  if (!confirm('Remover esta regra?')) return;
+  state.rules = state.rules.filter(r => r.id !== id);
+  saveState();
+  render();
+  toast('Regra removida');
+}
+
+function renderRules() {
+  const el = document.getElementById('rules-list');
+  if (!el) return;
+  if (!state.rules.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:1.25rem">Nenhuma regra criada ainda</div>';
+    return;
+  }
+  el.innerHTML = state.rules.map(r => `
+    <div class="rule-item">
+      <span class="rule-match">"${r.match}"</span>
+      <span class="rule-arrow">→</span>
+      <span class="rule-cat">${r.cat}</span>
+      ${r.rename ? `<span class="rule-rename">· renomear para "${r.rename}"</span>` : ''}
+      <span class="rule-spacer"></span>
+      <div class="rule-actions">
+        <button class="icon-btn" onclick="openRuleModal(${r.id})" title="Editar">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="icon-btn" onclick="deleteRule(${r.id})" title="Remover">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+// ─── Budgets ──────────────────────────────────────────────────────────────────
+
+function openBudgetModal(editId) {
+  const cats = allCats().filter(c => c !== 'Receita');
+  const sel = document.getElementById('budget-cat-input');
+  sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  if (editId !== undefined) {
+    const b = state.budgets.find(b => b.id === editId);
+    if (b) {
+      document.getElementById('budget-edit-id').value = editId;
+      document.getElementById('budget-limit-input').value = b.limit;
+      sel.value = b.cat;
+      document.getElementById('budget-modal-title').textContent = 'Editar orçamento';
+    }
+  } else {
+    document.getElementById('budget-edit-id').value = '';
+    document.getElementById('budget-limit-input').value = '';
+    document.getElementById('budget-modal-title').textContent = 'Novo orçamento';
+  }
+  document.getElementById('budget-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('budget-limit-input').focus(), 50);
+}
+
+function saveBudget() {
+  const cat = document.getElementById('budget-cat-input').value;
+  const limit = parseBrVal(document.getElementById('budget-limit-input').value);
+  const editId = document.getElementById('budget-edit-id').value;
+
+  if (!limit || limit <= 0) { toast('Digite um limite válido'); return; }
+
+  if (editId) {
+    const b = state.budgets.find(b => b.id === parseInt(editId));
+    if (b) { b.cat = cat; b.limit = limit; }
+  } else {
+    if (state.budgets.find(b => b.cat === cat)) {
+      toast('Já existe um orçamento para essa categoria'); return;
+    }
+    state.budgets.push({ id: state.nextId++, cat, limit });
+  }
+
+  saveState();
+  closeModal('budget-modal');
+  render();
+  toast('Orçamento salvo');
+}
+
+function deleteBudget(id) {
+  if (!confirm('Remover este orçamento?')) return;
+  state.budgets = state.budgets.filter(b => b.id !== id);
+  saveState();
+  render();
+  toast('Orçamento removido');
+}
+
+function renderBudgets(data) {
+  const el = document.getElementById('budget-list');
+  if (!el) return;
+  if (!state.budgets.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:1.25rem">Nenhum orçamento definido ainda</div>';
+    return;
+  }
+
+  // Use current month transactions for budget calculation
+  const now = new Date();
+  const monthTx = state.transactions.filter(t => {
+    const d = parseDate(t.date);
+    return d && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && t.val < 0;
+  });
+
+  el.innerHTML = state.budgets.map(b => {
+    const spent = monthTx.filter(t => t.cat === b.cat).reduce((a, t) => a + Math.abs(t.val), 0);
+    const pct = Math.min(100, Math.round(spent / b.limit * 100));
+    const over = spent > b.limit;
+    const color = over ? 'var(--red)' : pct > 80 ? '#BA7517' : 'var(--accent)';
+    return `
+    <div class="budget-item">
+      <div class="budget-item-header">
+        <span class="budget-cat">${b.cat}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="budget-amounts">${fmt(spent)} <span style="color:var(--text-3)">de</span> ${fmt(b.limit)}</span>
+          <div class="budget-actions">
+            <button class="icon-btn" onclick="openBudgetModal(${b.id})" title="Editar">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="icon-btn" onclick="deleteBudget(${b.id})" title="Remover">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="budget-bar-bg">
+        <div class="budget-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+      <div class="budget-footer">
+        <span class="budget-pct" style="color:${over ? 'var(--red)' : 'var(--text-3)'}">
+          ${over ? `R$ ${fmt(spent - b.limit)} acima do limite` : `${pct}% utilizado`}
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Modal helpers ────────────────────────────────────────────────────────────
+
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeModal('budget-modal');
+    closeModal('rule-modal');
+  }
+});

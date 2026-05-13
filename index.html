@@ -88,6 +88,36 @@
 
       <section class="section">
         <div class="section-header">
+          <span class="section-title">Orçamento por categoria</span>
+          <button class="btn btn-sm" onclick="openBudgetModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar
+          </button>
+        </div>
+        <div class="budget-list" id="budget-list">
+          <div class="empty-state" style="padding:1.25rem">Nenhum orçamento definido ainda</div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="section">
+        <div class="section-header">
+          <span class="section-title">Regras automáticas</span>
+          <button class="btn btn-sm" onclick="openRuleModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nova regra
+          </button>
+        </div>
+        <div class="rules-list" id="rules-list">
+          <div class="empty-state" style="padding:1.25rem">Nenhuma regra criada ainda</div>
+        </div>
+      </section>
+
+      <div class="divider"></div>
+
+      <section class="section">
+        <div class="section-header">
           <span class="section-title">Gastos por categoria</span>
           <span class="pill" id="cat-count">0 categorias</span>
         </div>
@@ -132,6 +162,60 @@
     </main>
 
     <div class="toast" id="toast"></div>
+
+    <!-- Budget Modal -->
+    <div class="modal-overlay" id="budget-modal" onclick="closeModal('budget-modal')" style="display:none">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <span class="modal-title" id="budget-modal-title">Novo orçamento</span>
+          <button class="modal-close" onclick="closeModal('budget-modal')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="budget-edit-id">
+          <label class="form-label">Categoria
+            <select class="form-input" id="budget-cat-input" style="margin-top:6px"></select>
+          </label>
+          <label class="form-label" style="margin-top:12px">Limite mensal (R$)
+            <input class="form-input" type="text" id="budget-limit-input" placeholder="ex: 800" style="margin-top:6px">
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('budget-modal')">Cancelar</button>
+          <button class="btn btn-primary" onclick="saveBudget()">Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rule Modal -->
+    <div class="modal-overlay" id="rule-modal" onclick="closeModal('rule-modal')" style="display:none">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <span class="modal-title" id="rule-modal-title">Nova regra</span>
+          <button class="modal-close" onclick="closeModal('rule-modal')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="rule-edit-id">
+          <label class="form-label">Se o nome contém
+            <input class="form-input" type="text" id="rule-match-input" placeholder='ex: "Uber", "iFood", "PIX 123"' style="margin-top:6px">
+          </label>
+          <label class="form-label" style="margin-top:12px">Categoria
+            <select class="form-input" id="rule-cat-input" style="margin-top:6px"></select>
+          </label>
+          <label class="form-label" style="margin-top:12px">Renomear para (opcional)
+            <input class="form-input" type="text" id="rule-rename-input" placeholder="ex: Uber, Mercado, iFood" style="margin-top:6px">
+          </label>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('rule-modal')">Cancelar</button>
+          <button class="btn btn-primary" onclick="saveRule()">Salvar</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <script src="app.js"></script>
