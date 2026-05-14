@@ -2,6 +2,17 @@
 
 const STORAGE_KEY = 'fintrack_v1';
 
+const CAT_EMOJI = {
+  'Alimentação': '🍽️', 'Transporte': '🚗', 'Assinaturas': '🔄',
+  'Saúde': '💊', 'Lazer': '🎉', 'Moradia': '🏠',
+  'Educação': '📚', 'Vestuário': '👕', 'PIX': '⇄', 'PIX': '↔️',
+  'Receita': '💰', 'Outros': '•', 'Compras': '🛍️',
+  'Pet': '🐾', 'Telefone': '📱', 'Feira': '🥬',
+  'MEI': '🏢', 'Coleção': '📦', 'Empréstimo': '🤝',
+  'Cartão de Crédito': '💳',
+};
+function catEmoji(cat) { return CAT_EMOJI[cat] || '•'; }
+
 const DEFAULT_CAT_COLORS = {
   'Alimentação': '#D85A30', 'Transporte': '#378ADD', 'Assinaturas': '#7F77DD',
   'Saúde': '#1D9E75', 'Lazer': '#D4537E', 'Moradia': '#BA7517',
@@ -54,7 +65,6 @@ function loadState() {
   }
   document.getElementById('meta-goal-input').value = state.goalTotal || 10000;
   document.getElementById('meta-saved-input').value = state.savedTotal || 0;
-  document.getElementById('itau-base-input').value = state.itauBase || 0;
   updateSaveStatus();
   if (state.transactions.length > 0) {
     document.getElementById('clear-btn').style.display = 'inline-flex';
@@ -477,10 +487,7 @@ function updateSaved() {
   if (v >= 0) { state.savedTotal = v; saveState(); render(); }
 }
 
-function updateItauBase() {
-  const v = parseBrVal(document.getElementById('itau-base-input').value);
-  if (v >= 0) { state.itauBase = v; saveState(); render(); }
-}
+
 
 // ─── Edit ─────────────────────────────────────────────────────────────────────
 
@@ -639,7 +646,7 @@ function render() {
         const ring = isActive ? `box-shadow:0 0 0 2px ${color};` : '';
         return `<div class="cat-item" style="${ring}" onclick="setCatFilter('${c}')">
           <div class="cat-row">
-            <span class="cat-name">${c}</span>
+            <span class="cat-name" style="color:${color}">${c}</span>
           </div>
           <span class="cat-amt">${fmt(v)}</span>
           <div class="cat-bar-bg">
@@ -702,9 +709,21 @@ function render() {
           ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>'
           : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>';
 
-        // Bank logo
+        // Bank logo with transaction type icon
+        function txIcon(name) {
+          const n = (name || '').toLowerCase();
+          if (/pix recebido|pix entrada|transferencia recebida/.test(n))
+            return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`;
+          if (/pix|transferencia|ted|doc/.test(n))
+            return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>`;
+          if (/compra|debito|credito|qr code|pagamento/.test(n))
+            return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+          if (/saque|resgate/.test(n))
+            return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
+          return `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+        }
         const bankLogo = t.src === 'Itaú'
-          ? `<div class="bank-logo bank-itau" title="Itaú">it</div>`
+          ? `<div class="bank-logo bank-itau" title="${t.rawName}">${txIcon(t.rawName)}</div>`
           : t.src === 'Inter'
           ? `<div class="bank-logo bank-inter" title="Inter">in</div>`
           : '';
@@ -730,13 +749,14 @@ function render() {
           </div>`;
         }
 
-        return `<div class="tx-item">
+        return `<div class="tx-item${selectedIds.has(t.id) ? ' selected' : ''}" id="tx-row-${t.id}">
+          <input type="checkbox" class="tx-checkbox" id="tx-cb-${t.id}" ${selectedIds.has(t.id) ? 'checked' : ''} onchange="toggleSelect(${t.id})" onclick="event.stopPropagation()">
           <div class="tx-avatar" style="background:${iconBg};color:${iconColor}">${iconSvg}</div>
           <div class="tx-info">
             <span class="tx-name" title="${edited ? 'Original: ' + t.rawName : t.name}">${t.name}${edited ? ' <span class="edited-badge">editado</span>' : ''}</span>
           </div>
           <div class="tx-middle">
-            <span class="cat-badge" style="background:${color}15;color:${color}" onclick="startEdit(${t.id})" title="Clique para editar">${t.cat}</span>
+            <span class="cat-badge" style="background:${color}20;color:${color};border-color:${color}40" onclick="startEdit(${t.id})" title="Clique para editar">${t.cat}</span>
           </div>
           <div class="tx-bank">
             ${bankLogo}
@@ -1188,3 +1208,96 @@ document.getElementById('import-input').addEventListener('change', function(e) {
   reader.readAsText(file);
   this.value = '';
 });
+
+// ─── Bulk selection ───────────────────────────────────────────────────────────
+
+let selectedIds = new Set();
+
+function toggleSelect(id) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+  updateBulkBar();
+  // Update visual state of the row
+  const row = document.getElementById('tx-row-' + id);
+  if (row) row.classList.toggle('selected', selectedIds.has(id));
+  const cb = document.getElementById('tx-cb-' + id);
+  if (cb) cb.checked = selectedIds.has(id);
+}
+
+function toggleSelectAll() {
+  const filtered = getFiltered();
+  const allSelected = filtered.every(t => selectedIds.has(t.id));
+  if (allSelected) {
+    filtered.forEach(t => selectedIds.delete(t.id));
+  } else {
+    filtered.forEach(t => selectedIds.add(t.id));
+  }
+  updateBulkBar();
+  render();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  updateBulkBar();
+  render();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-bar');
+  const count = selectedIds.size;
+  if (count > 0) {
+    bar.style.display = 'block';
+    document.getElementById('bulk-count').textContent = count + ' selecionada' + (count !== 1 ? 's' : '');
+    const filtered = getFiltered();
+    const allSel = filtered.length > 0 && filtered.every(t => selectedIds.has(t.id));
+    document.getElementById('bulk-select-all-label').textContent = allSel ? 'Desselecionar todas' : 'Selecionar todas';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function openBulkModal() {
+  const cats = allCats();
+  const sel = document.getElementById('bulk-cat-input');
+  sel.innerHTML = '<option value="">— manter categoria atual —</option>' +
+    cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('bulk-cat-check').checked = false;
+  document.getElementById('bulk-cat-input').disabled = true;
+  document.getElementById('bulk-name-check').checked = false;
+  document.getElementById('bulk-name-input').disabled = true;
+  document.getElementById('bulk-name-input').value = '';
+  document.getElementById('bulk-modal-title').textContent = `Editar ${selectedIds.size} transaç${selectedIds.size === 1 ? 'ão' : 'ões'}`;
+  document.getElementById('bulk-modal').style.display = 'flex';
+}
+
+function applyBulkEdit() {
+  const changeCat = document.getElementById('bulk-cat-check').checked;
+  const newCat = document.getElementById('bulk-cat-input').value;
+  const changeName = document.getElementById('bulk-name-check').checked;
+  const newName = document.getElementById('bulk-name-input').value.trim();
+
+  if (!changeCat && !changeName) {
+    toast('Selecione pelo menos uma alteração');
+    return;
+  }
+
+  let changed = 0;
+  state.transactions = state.transactions.map(t => {
+    if (!selectedIds.has(t.id)) return t;
+    changed++;
+    return {
+      ...t,
+      ...(changeCat && newCat ? { cat: newCat } : {}),
+      ...(changeName && newName ? { name: newName } : {}),
+    };
+  });
+
+  saveState();
+  closeModal('bulk-modal');
+  clearSelection();
+  render();
+  toast(`${changed} transaç${changed === 1 ? 'ão atualizada' : 'ões atualizadas'}`);
+}
