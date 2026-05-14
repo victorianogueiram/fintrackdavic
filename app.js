@@ -43,7 +43,7 @@ let state = {
 };
 
 let editingId = null;
-let activePeriod = '30d';
+let activePeriod = 'all';
 let activeType = 'all';
 let activeCat = '';
 
@@ -560,7 +560,22 @@ function setCatFilter(cat) {
 
 document.getElementById('search').addEventListener('input', render);
 
-// ─── Transaction icon helper ─────────────────────────────────────────────────
+// ─── Transaction helpers ─────────────────────────────────────────────────────
+
+function txTypeLabel(name) {
+  const n = (name || '').toLowerCase();
+  if (/pix recebido|pix entrada|transferencia recebida|credito em conta/.test(n)) return 'PIX recebido';
+  if (/pix transf|pix enviado|pix para/.test(n)) return 'PIX enviado';
+  if (/pix qrs|pagamento de pix qr|pix qr/.test(n)) return 'PIX QR Code';
+  if (/pix/.test(n)) return 'PIX';
+  if (/compra debito|compra no debito/.test(n)) return 'Compra débito';
+  if (/compra credito|compra no credito/.test(n)) return 'Compra crédito';
+  if (/ted|doc/.test(n)) return 'TED/DOC';
+  if (/saque/.test(n)) return 'Saque';
+  if (/pagamento/.test(n)) return 'Pagamento';
+  if (/salario/.test(n)) return 'Crédito';
+  return null;
+}
 
 function txIcon(name) {
   const n = (name || '').toLowerCase();
@@ -730,21 +745,6 @@ function render() {
           ? `<div class="bank-logo bank-inter">in</div>`
           : '';
 
-        // Transaction type label
-        function txTypeLabel(name) {
-          const n = (name || '').toLowerCase();
-          if (/pix recebido|pix entrada|transferencia recebida|credito em conta/.test(n)) return 'PIX recebido';
-          if (/pix transf|pix enviado|pix para/.test(n)) return 'PIX enviado';
-          if (/pix qrs|pagamento de pix qr|pix qr/.test(n)) return 'PIX QR Code';
-          if (/pix/.test(n)) return 'PIX';
-          if (/compra debito|compra no debito/.test(n)) return 'Compra débito';
-          if (/compra credito|compra no credito/.test(n)) return 'Compra crédito';
-          if (/ted|doc/.test(n)) return 'TED/DOC';
-          if (/saque/.test(n)) return 'Saque';
-          if (/pagamento/.test(n)) return 'Pagamento';
-          if (/salario|credito em conta/.test(n)) return 'Crédito';
-          return null;
-        }
         const typeLabel = txTypeLabel(t.rawName);
 
         if (isEditing) {
