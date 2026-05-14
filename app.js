@@ -46,6 +46,7 @@ let editingId = null;
 let activePeriod = 'all';
 let activeType = 'all';
 let activeCat = '';
+let selectedIds = new Set();
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 
@@ -1231,7 +1232,6 @@ document.getElementById('import-input').addEventListener('change', function(e) {
 
 // ─── Bulk selection ───────────────────────────────────────────────────────────
 
-let selectedIds = new Set();
 
 function toggleSelect(id) {
   if (selectedIds.has(id)) {
