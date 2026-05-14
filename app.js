@@ -38,7 +38,17 @@ let supabase = null;
 let currentNickname = null;
 
 function initSupabase() {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  try {
+    // UMD build exposes window.supabase.createClient
+    const lib = window.supabase;
+    if (lib && lib.createClient) {
+      supabase = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } else {
+      console.warn('Supabase SDK not found');
+    }
+  } catch(e) {
+    console.warn('Supabase init failed:', e);
+  }
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
@@ -73,10 +83,10 @@ async function doLogin() {
       }
     }
 
+    // Always show the app regardless of cloud status
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('main-app').style.display = 'block';
 
-    // Show nickname in topbar
     const logo = document.getElementById('app-logo');
     if (logo) logo.innerHTML = `fintrack <span class="nickname-pill">${nick}</span>`;
 
@@ -87,7 +97,14 @@ async function doLogin() {
     }
   } catch(e) {
     console.error('Login error:', e);
-    toast('Erro ao entrar. Tente novamente.');
+    // Even on error, let the user in with empty state
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    const logo = document.getElementById('app-logo');
+    if (logo) logo.innerHTML = `fintrack <span class="nickname-pill">${currentNickname}</span>`;
+    initTheme();
+    render();
+    toast('Carregando offline — dados locais');
   } finally {
     btn.textContent = 'Entrar';
     btn.disabled = false;
