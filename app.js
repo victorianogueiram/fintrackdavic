@@ -124,28 +124,35 @@ function doLogout() {
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
 async function loadState() {
-  try {
-    if (!sbClient || !currentNickname) return;
-    const { data, error } = await sbClient
-      .from('fintrack_users')
-      .select('data')
-      .eq('nickname', currentNickname)
-      .single();
+  // Try local backup first (instant)
+  const backup = localStorage.getItem(STORAGE_KEY + '_' + currentNickname);
+  if (backup) {
+    try { state = { ...state, ...JSON.parse(backup) }; } catch(e) {}
+  }
 
-    if (data?.data) {
-      state = { ...state, ...data.data };
+  // Then try cloud with 5s timeout
+  if (sbClient && currentNickname) {
+    try {
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
+      const query = sbClient.from('fintrack_users').select('data').eq('nickname', currentNickname).single();
+      const { data } = await Promise.race([query, timeout]);
+      if (data?.data) {
+        state = { ...state, ...data.data };
+        // Update local backup with fresh cloud data
+        localStorage.setItem(STORAGE_KEY + '_' + currentNickname, JSON.stringify(state));
+      }
+    } catch (e) {
+      console.warn('Cloud load failed or timed out, using local data:', e.message);
     }
-    // else: new user, state stays default
+  }
 
-    document.getElementById('meta-goal-input').value = state.goalTotal;
-    document.getElementById('meta-saved-input').value = state.savedTotal;
-    document.getElementById('itau-base-input').value = state.itauBase || 0;
-    updateSaveStatus();
-    if (state.transactions.length > 0) {
-      document.getElementById('clear-btn').style.display = 'inline-flex';
-    }
-  } catch (e) {
-    console.warn('Erro ao carregar dados:', e);
+  // Always update UI fields
+  document.getElementById('meta-goal-input').value = state.goalTotal || 10000;
+  document.getElementById('meta-saved-input').value = state.savedTotal || 0;
+  document.getElementById('itau-base-input').value = state.itauBase || 0;
+  updateSaveStatus();
+  if (state.transactions.length > 0) {
+    document.getElementById('clear-btn').style.display = 'inline-flex';
   }
 }
 
