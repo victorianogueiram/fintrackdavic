@@ -269,13 +269,22 @@ function parseItauXLS(arrayBuffer) {
       }
       if (headerIdx === -1) return [];
 
+      let saldoAnterior = null;
       for (let i = headerIdx + 2; i < rows.length; i++) {
         const row = rows[i];
         if (!row || !row[0]) continue;
         const date = String(row[0]).trim();
         if (!/^\d{2}\/\d{2}/.test(date)) continue;
         const rawName = String(row[1] || '').trim();
-        if (!rawName || /saldo/i.test(rawName)) continue;
+
+        // Capture SALDO ANTERIOR (col 4 = saldos)
+        if (/saldo anterior/i.test(rawName)) {
+          const s = typeof row[4] === 'number' ? row[4] : parseBrVal(String(row[4] || ''));
+          if (s) saldoAnterior = s;
+          continue;
+        }
+        if (/saldo/i.test(rawName)) continue;
+
         const val = typeof row[3] === 'number' ? row[3] : parseBrVal(String(row[3] || ''));
         if (!val) continue;
         const cleanName = rawName.replace(/\s*\d{2}\/\d{2}$/, '').trim();
@@ -292,6 +301,7 @@ function parseItauXLS(arrayBuffer) {
           src: 'Itaú',
         });
       }
+      if (saldoAnterior !== null) txs._saldoAnterior = saldoAnterior;
       return txs;
     }
   } catch(e) {
@@ -369,6 +379,15 @@ function applyRulesAndSave(parsed, bankName) {
     toast('Não foi possível ler o arquivo. Verifique o formato.');
     return;
   }
+
+  // If Itaú XLS sent a saldoAnterior, update the base automatically
+  if (parsed._saldoAnterior !== undefined && bankName === 'Itaú') {
+    state.itauBase = parsed._saldoAnterior;
+    const input = document.getElementById('itau-base-input');
+    if (input) input.value = parsed._saldoAnterior;
+    toast('Saldo base atualizado automaticamente para R$ ' + fmt(parsed._saldoAnterior));
+  }
+
   const novas = parsed.filter(t => !isDuplicate(t)).map(t => {
     for (const rule of (state.rules || [])) {
       if (t.rawName.toLowerCase().includes(rule.match.toLowerCase())) {
