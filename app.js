@@ -30,25 +30,47 @@ let activePeriod = '30d';
 let activeType = 'all';
 let activeCat = '';
 
-// ─── Supabase ─────────────────────────────────────────────────────────────────
+// ─── Supabase REST ────────────────────────────────────────────────────────────
 
 const SUPABASE_URL = 'https://dgloqihjyfzopzgcqepj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbG9xaWhqeWZ6b3B6Z2NxZXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTMyMjYsImV4cCI6MjA5NDI4OTIyNn0.Q9qOezL4HTF6Km_AVsvcGpNcMv50tin1plWbHG0cOkU';
-let sbClient = null;
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbG9xaWhqeWZ6b3B6Z2NxZXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTMyMjYsImV4cCI6MjA5NDI4OTIyNn0.Q9qOezL4HTF6Km_AVsvcGpNcMv50tin1plWbHG0cOkU';
 let currentNickname = null;
 
-function initSupabase() {
-  try {
-    // UMD build exposes window.supabase.createClient
-    const lib = window.supabase;
-    if (lib && lib.createClient) {
-      sbClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } else {
-      console.warn('Supabase SDK not found');
+function sbHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': SUPABASE_ANON,
+    'Authorization': 'Bearer ' + SUPABASE_ANON,
+  };
+}
+
+async function sbGet(nickname) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/fintrack_users?nickname=eq.${encodeURIComponent(nickname)}&select=data`,
+    { headers: sbHeaders() }
+  );
+  if (!res.ok) throw new Error('GET failed: ' + res.status);
+  const rows = await res.json();
+  return rows[0]?.data || null;
+}
+
+async function sbUpsert(nickname, data) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/fintrack_users`,
+    {
+      method: 'POST',
+      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ nickname, data, updated_at: new Date().toISOString() }),
     }
-  } catch(e) {
-    console.warn('Supabase init failed:', e);
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error('UPSERT failed: ' + err);
   }
+}
+
+function initSupabase() {
+  // No SDK needed — using REST directly
 }
 
 // ─── Login ────────────────────────────────────────────────────────────────────
@@ -64,7 +86,7 @@ async function doLogin() {
 
   try {
     // Ensure Supabase is initialized
-    if (!sbClient) initSupabase();
+    // REST-based, no client needed
 
     currentNickname = nick;
     localStorage.setItem('fintrack_nickname', nick);
@@ -130,20 +152,16 @@ async function loadState() {
     try { state = { ...state, ...JSON.parse(backup) }; } catch(e) {}
   }
 
-  // Then try cloud with 5s timeout
-  if (sbClient && currentNickname) {
-    try {
-      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000));
-      const query = sbClient.from('fintrack_users').select('data').eq('nickname', currentNickname).single();
-      const { data } = await Promise.race([query, timeout]);
-      if (data?.data) {
-        state = { ...state, ...data.data };
-        // Update local backup with fresh cloud data
-        localStorage.setItem(STORAGE_KEY + '_' + currentNickname, JSON.stringify(state));
-      }
-    } catch (e) {
-      console.warn('Cloud load failed or timed out, using local data:', e.message);
+  // Then try cloud with 6s timeout
+  try {
+    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000));
+    const cloudData = await Promise.race([sbGet(currentNickname), timeout]);
+    if (cloudData) {
+      state = { ...state, ...cloudData };
+      localStorage.setItem(STORAGE_KEY + '_' + currentNickname, JSON.stringify(state));
     }
+  } catch (e) {
+    console.warn('Cloud load failed, using local:', e.message);
   }
 
   // Always update UI fields
@@ -159,24 +177,20 @@ async function loadState() {
 let saveTimeout = null;
 function saveState() {
   state.lastSaved = new Date().toISOString();
-  // Optimistic local backup
+  // Always save locally first (instant)
   localStorage.setItem(STORAGE_KEY + '_' + currentNickname, JSON.stringify(state));
   updateSaveStatus();
   showSaveIndicator();
-  // Debounce remote save — avoid too many writes
+  // Debounce cloud save 1.5s
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(async () => {
-    if (!sbClient || !currentNickname) return;
+    if (!currentNickname) return;
     try {
-      await sbClient.from('fintrack_users').upsert({
-        nickname: currentNickname,
-        data: state,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'nickname' });
+      await sbUpsert(currentNickname, state);
     } catch(e) {
-      console.warn('Erro ao salvar na nuvem:', e);
+      console.warn('Cloud save failed:', e.message);
     }
-  }, 1000);
+  }, 1500);
 }
 
 function updateSaveStatus() {
