@@ -468,7 +468,17 @@ function render() {
   renderBudgets(data);
   renderRules();
 
-  // Category pills removed — filtering now via cat-grid cards only
+  // Category pills
+  const usedCats = [...new Set(state.transactions.map(t => t.cat))].sort();
+  const pillsEl = document.getElementById('cat-pills');
+  if (pillsEl) {
+    pillsEl.innerHTML = usedCats.map(c => {
+      const color = CAT_COLORS[c] || '#888';
+      const isActive = activeCat === c;
+      const style = isActive ? `background:${color};border-color:${color}` : '';
+      return `<button class="cat-pill${isActive ? ' active' : ''}" data-cat="${c}" style="${style}" onclick="setCatFilter('${c}')"><span class="dot" style="background:${color}"></span>${c}</button>`;
+    }).join('');
+  }
 
   // Category grid — clickable cards, active ring on selected
   const catMap = {};
