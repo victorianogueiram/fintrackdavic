@@ -194,28 +194,105 @@ function isDuplicate(tx) {
 }
 
 function parseItauCSV(text) {
+  // Itaú exports .xls — browser reads as HTML table or tab-separated
+  // Try multiple formats: tab-separated, semicolon, or HTML table rows
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   const txs = [];
-  for (const line of lines) {
-    const cols = line.split(/[;\t]|(?<=\d{2}\/\d{2}\/\d{4}),/);
-    const parts = line.split(/[;,\t]/);
-    if (parts.length < 3) continue;
+
+  // Find the data header row (contains "data" and "lançamento")
+  let dataStart = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].toLowerCase();
+    if ((l.includes('data') && l.includes('lan')) || l.includes('lançamento')) {
+      dataStart = i + 2; // skip header + "lançamentos" label row
+      break;
+    }
+  }
+  if (dataStart === -1) dataStart = 0;
+
+  for (let i = dataStart; i < lines.length; i++) {
+    const line = lines[i];
+    // Try tab first (XLS often exports as TSV), then semicolon, then comma
+    let parts = line.split('\t');
+    if (parts.length < 3) parts = line.split(';');
+    if (parts.length < 3) parts = line.split(',');
+
     const date = parts[0]?.trim().replace(/"/g, '');
-    if (!/\d{2}\/\d{2}/.test(date)) continue;
+    if (!date || !/^\d{2}\/\d{2}/.test(date)) continue;
+
     const rawName = parts[1]?.trim().replace(/"/g, '') || 'Transação';
-    const val = parseBrVal(parts[2]);
+
+    // Skip saldo lines
+    if (/saldo/i.test(rawName)) continue;
+
+    // Value is col index 3 for XLS format (data, name, ag, value)
+    // Fall back to col 2 for simple CSV
+    let valStr = parts.length >= 4 ? parts[3] : parts[2];
+    const val = parseBrVal(valStr);
     if (!val) continue;
+
+    // Clean name: remove trailing date suffix like "01/05" or "MARIANA01/05"
+    const cleanName = rawName.replace(/\s*\d{2}\/\d{2}$/, '').trim();
+
     txs.push({
       id: state.nextId++,
       date: date.length === 5 ? date + '/' + new Date().getFullYear() : date,
-      name: rawName,
-      rawName,
-      cat: guessCategory(rawName),
+      name: cleanName,
+      rawName: cleanName,
+      cat: guessCategory(cleanName),
       val,
       src: 'Itaú',
     });
   }
   return txs;
+}
+
+function parseItauXLS(arrayBuffer) {
+  // Parse XLS binary using SheetJS (if available) or fallback to text
+  try {
+    if (typeof XLSX !== 'undefined') {
+      const wb = XLSX.read(arrayBuffer, { type: 'array' });
+      const ws = wb.Sheets['Lançamentos'] || wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+      const txs = [];
+
+      // Find header row
+      let headerIdx = -1;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (r && String(r[0]).toLowerCase().trim() === 'data') {
+          headerIdx = i;
+          break;
+        }
+      }
+      if (headerIdx === -1) return [];
+
+      for (let i = headerIdx + 2; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || !row[0]) continue;
+        const date = String(row[0]).trim();
+        if (!/^\d{2}\/\d{2}/.test(date)) continue;
+        const rawName = String(row[1] || '').trim();
+        if (!rawName || /saldo/i.test(rawName)) continue;
+        const val = typeof row[3] === 'number' ? row[3] : parseBrVal(String(row[3] || ''));
+        if (!val) continue;
+        const cleanName = rawName.replace(/\s*\d{2}\/\d{2}$/, '').trim();
+        txs.push({
+          id: state.nextId++,
+          date,
+          name: cleanName,
+          rawName: cleanName,
+          cat: guessCategory(cleanName),
+          val,
+          src: 'Itaú',
+        });
+      }
+      return txs;
+    }
+  } catch(e) {
+    console.warn('SheetJS parse failed, falling back to text:', e);
+  }
+  return null; // signal fallback to text
 }
 
 function parseInterCSV(text) {
@@ -282,36 +359,63 @@ function triggerUpload(bank) {
   document.getElementById('file-' + bank).click();
 }
 
-function handleFile(bank, file) {
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const text = e.target.result;
-    const parsed = bank === 'itau' ? parseItauCSV(text) : parseInterCSV(text);
-    if (!parsed.length) {
-      toast('Não foi possível ler o arquivo. Verifique o formato.');
-      return;
-    }
-    const novas = parsed.filter(t => !isDuplicate(t)).map(t => {
-      for (const rule of (state.rules || [])) {
-        if (t.rawName.toLowerCase().includes(rule.match.toLowerCase())) {
-          return { ...t, cat: rule.cat, name: rule.rename || t.name };
-        }
+function applyRulesAndSave(parsed, bankName) {
+  if (!parsed || !parsed.length) {
+    toast('Não foi possível ler o arquivo. Verifique o formato.');
+    return;
+  }
+  const novas = parsed.filter(t => !isDuplicate(t)).map(t => {
+    for (const rule of (state.rules || [])) {
+      if (t.rawName.toLowerCase().includes(rule.match.toLowerCase())) {
+        return { ...t, cat: rule.cat, name: rule.rename || t.name };
       }
-      return t;
-    });
-    const dupes = parsed.length - novas.length;
-    state.transactions = [...novas, ...state.transactions].sort((a, b) => {
-      const da = parseDate(a.date), db = parseDate(b.date);
-      return (db || 0) - (da || 0);
-    });
-    saveState();
-    render();
-    document.getElementById('clear-btn').style.display = 'inline-flex';
-    let msg = novas.length + ' transações importadas do ' + (bank === 'itau' ? 'Itaú' : 'Inter');
-    if (dupes > 0) msg += ` (${dupes} duplicada${dupes > 1 ? 's' : ''} ignorada${dupes > 1 ? 's' : ''})`;
-    toast(msg);
-  };
-  reader.readAsText(file, 'UTF-8');
+    }
+    return t;
+  });
+  const dupes = parsed.length - novas.length;
+  state.transactions = [...novas, ...state.transactions].sort((a, b) => {
+    const da = parseDate(a.date), db = parseDate(b.date);
+    return (db || 0) - (da || 0);
+  });
+  saveState();
+  render();
+  document.getElementById('clear-btn').style.display = 'inline-flex';
+  let msg = novas.length + ' transações importadas do ' + bankName;
+  if (dupes > 0) msg += ` (${dupes} duplicada${dupes > 1 ? 's' : ''} ignorada${dupes > 1 ? 's' : ''})`;
+  toast(msg);
+}
+
+function handleFile(bank, file) {
+  const isXLS = file.name.toLowerCase().endsWith('.xls');
+
+  if (bank === 'itau' && isXLS) {
+    // Read as ArrayBuffer for SheetJS XLS parsing
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const buf = new Uint8Array(e.target.result);
+      let parsed = parseItauXLS(buf);
+      if (parsed === null) {
+        // Fallback: try reading as text (some XLS are actually HTML)
+        const textReader = new FileReader();
+        textReader.onload = function(e2) {
+          parsed = parseItauCSV(e2.target.result);
+          applyRulesAndSave(parsed, 'Itaú');
+        };
+        textReader.readAsText(file, 'ISO-8859-1');
+        return;
+      }
+      applyRulesAndSave(parsed, 'Itaú');
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const parsed = bank === 'itau' ? parseItauCSV(text) : parseInterCSV(text);
+      applyRulesAndSave(parsed, bank === 'itau' ? 'Itaú' : 'Inter');
+    };
+    reader.readAsText(file, bank === 'itau' ? 'ISO-8859-1' : 'UTF-8');
+  }
 }
 
 document.getElementById('file-itau').addEventListener('change', function (e) {
