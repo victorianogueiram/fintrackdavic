@@ -526,3 +526,12 @@ body {
 }
 .bulk-bar .btn:hover { background: rgba(255,255,255,0.25); }
 .bulk-bar .btn-danger { color: #ff6b6b; }
+
+/* ── Transaction type label ──────────────────────────────────────────────── */
+.tx-type-label {
+  font-size: 12px;
+  color: var(--label-3);
+  flex-shrink: 0;
+  min-width: 100px;
+  white-space: nowrap;
+}

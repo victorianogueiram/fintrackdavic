@@ -725,10 +725,27 @@ function render() {
           : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>';
 
         const bankLogo = t.src === 'Itaú'
-          ? `<div class="bank-logo bank-itau" title="${t.rawName}">${txIcon(t.rawName)}</div>`
+          ? `<div class="bank-logo bank-itau">it</div>`
           : t.src === 'Inter'
-          ? `<div class="bank-logo bank-inter" title="Inter">in</div>`
+          ? `<div class="bank-logo bank-inter">in</div>`
           : '';
+
+        // Transaction type label
+        function txTypeLabel(name) {
+          const n = (name || '').toLowerCase();
+          if (/pix recebido|pix entrada|transferencia recebida|credito em conta/.test(n)) return 'PIX recebido';
+          if (/pix transf|pix enviado|pix para/.test(n)) return 'PIX enviado';
+          if (/pix qrs|pagamento de pix qr|pix qr/.test(n)) return 'PIX QR Code';
+          if (/pix/.test(n)) return 'PIX';
+          if (/compra debito|compra no debito/.test(n)) return 'Compra débito';
+          if (/compra credito|compra no credito/.test(n)) return 'Compra crédito';
+          if (/ted|doc/.test(n)) return 'TED/DOC';
+          if (/saque/.test(n)) return 'Saque';
+          if (/pagamento/.test(n)) return 'Pagamento';
+          if (/salario|credito em conta/.test(n)) return 'Crédito';
+          return null;
+        }
+        const typeLabel = txTypeLabel(t.rawName);
 
         if (isEditing) {
           return `<div class="tx-item">
@@ -757,6 +774,7 @@ function render() {
           <div class="tx-info">
             <span class="tx-name" title="${edited ? 'Original: ' + t.rawName : t.name}">${t.name}${edited ? ' <span class="edited-badge">editado</span>' : ''}</span>
           </div>
+          ${typeLabel ? `<div class="tx-type-label">${typeLabel}</div>` : '<div class="tx-type-label"></div>'}
           <div class="tx-middle">
             <span class="cat-badge" style="background:${color}20;color:${color};border-color:${color}40" onclick="startEdit(${t.id})" title="Clique para editar">${t.cat}</span>
           </div>
