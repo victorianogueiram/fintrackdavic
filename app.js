@@ -30,36 +30,107 @@ let activePeriod = '30d';
 let activeType = 'all';
 let activeCat = '';
 
+// ─── Supabase ─────────────────────────────────────────────────────────────────
+
+const SUPABASE_URL = 'https://dgloqihjyfzopzgcqepj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbG9xaWhqeWZ6b3B6Z2NxZXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTMyMjYsImV4cCI6MjA5NDI4OTIyNn0.Q9qOezL4HTF6Km_AVsvcGpNcMv50tin1plWbHG0cOkU';
+let supabase = null;
+let currentNickname = null;
+
+function initSupabase() {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+}
+
+// ─── Login ────────────────────────────────────────────────────────────────────
+
+async function doLogin() {
+  const input = document.getElementById('nickname-input');
+  const nick = input?.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+  if (!nick) { toast('Digite um nickname válido'); return; }
+
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Entrando...';
+  btn.disabled = true;
+
+  try {
+    currentNickname = nick;
+    localStorage.setItem('fintrack_nickname', nick);
+    await loadState();
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+
+    // Show nickname in topbar
+    const logo = document.getElementById('app-logo');
+    if (logo) logo.innerHTML = `fintrack <span class="nickname-pill">${nick}</span>`;
+
+    initTheme();
+    render();
+  } catch(e) {
+    toast('Erro ao entrar. Tente novamente.');
+    btn.textContent = 'Entrar';
+    btn.disabled = false;
+  }
+}
+
+function doLogout() {
+  if (!confirm('Sair da sessão?')) return;
+  localStorage.removeItem('fintrack_nickname');
+  currentNickname = null;
+  state = { transactions: [], customCats: [], budgets: [], rules: [], savedTotal: 0, goalTotal: 10000, itauBase: 0, nextId: 1, lastSaved: null };
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('nickname-input').value = '';
+}
+
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
-function loadState() {
+async function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      state = { ...state, ...parsed };
-      document.getElementById('meta-goal-input').value = state.goalTotal;
-      document.getElementById('meta-saved-input').value = state.savedTotal;
-      document.getElementById('itau-base-input').value = state.itauBase || 0;
-      updateSaveStatus();
-      if (state.transactions.length > 0) {
-        document.getElementById('clear-btn').style.display = 'inline-flex';
-      }
+    if (!supabase || !currentNickname) return;
+    const { data, error } = await supabase
+      .from('fintrack_users')
+      .select('data')
+      .eq('nickname', currentNickname)
+      .single();
+
+    if (data?.data) {
+      state = { ...state, ...data.data };
+    }
+    // else: new user, state stays default
+
+    document.getElementById('meta-goal-input').value = state.goalTotal;
+    document.getElementById('meta-saved-input').value = state.savedTotal;
+    document.getElementById('itau-base-input').value = state.itauBase || 0;
+    updateSaveStatus();
+    if (state.transactions.length > 0) {
+      document.getElementById('clear-btn').style.display = 'inline-flex';
     }
   } catch (e) {
     console.warn('Erro ao carregar dados:', e);
   }
 }
 
+let saveTimeout = null;
 function saveState() {
-  try {
-    state.lastSaved = new Date().toISOString();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    updateSaveStatus();
-    showSaveIndicator();
-  } catch (e) {
-    console.warn('Erro ao salvar:', e);
-  }
+  state.lastSaved = new Date().toISOString();
+  // Optimistic local backup
+  localStorage.setItem(STORAGE_KEY + '_' + currentNickname, JSON.stringify(state));
+  updateSaveStatus();
+  showSaveIndicator();
+  // Debounce remote save — avoid too many writes
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    if (!supabase || !currentNickname) return;
+    try {
+      await supabase.from('fintrack_users').upsert({
+        nickname: currentNickname,
+        data: state,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'nickname' });
+    } catch(e) {
+      console.warn('Erro ao salvar na nuvem:', e);
+    }
+  }, 1000);
 }
 
 function updateSaveStatus() {
@@ -680,9 +751,11 @@ function render() {
         const color = CAT_COLORS[t.cat] || '#888';
         const catOpts = allCats().map(c => `<option value="${c}"${c === t.cat ? ' selected' : ''}>${c}</option>`).join('');
         const edited = t.name !== t.rawName;
-        const initials = t.name.split(/\s+/).slice(0,2).map(w => w[0]?.toUpperCase() || '').join('');
-        const iconBg = t.val > 0 ? 'var(--green-bg)' : `${color}18`;
-        const iconColor = t.val > 0 ? 'var(--green)' : color;
+        const iconBg = t.val > 0 ? 'var(--green-bg)' : 'var(--red-bg)';
+        const iconColor = t.val > 0 ? 'var(--green)' : 'var(--red)';
+        const iconSvg = t.val > 0
+          ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>'
+          : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/></svg>';
 
         // Bank logo
         const bankLogo = t.src === 'Itaú'
@@ -693,7 +766,7 @@ function render() {
 
         if (isEditing) {
           return `<div class="tx-item">
-            <div class="tx-avatar" style="background:${iconBg};color:${iconColor}">${initials}</div>
+            <div class="tx-avatar" style="background:${iconBg};color:${iconColor}">${iconSvg}</div>
             <div class="tx-info" style="flex:1">
               <input class="tx-name-input" id="name-input-${t.id}" value="${t.name.replace(/"/g, '&quot;')}"
                 onkeydown="if(event.key==='Enter')saveEdit(${t.id});if(event.key==='Escape')cancelEdit()">
@@ -713,7 +786,7 @@ function render() {
         }
 
         return `<div class="tx-item">
-          <div class="tx-avatar" style="background:${iconBg};color:${iconColor}" title="${t.name}">${initials}</div>
+          <div class="tx-avatar" style="background:${iconBg};color:${iconColor}">${iconSvg}</div>
           <div class="tx-info">
             <span class="tx-name" title="${edited ? 'Original: ' + t.rawName : t.name}">${t.name}${edited ? ' <span class="edited-badge">editado</span>' : ''}</span>
           </div>
@@ -753,8 +826,22 @@ function toast(msg) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-loadState();
-render();
+initSupabase();
+
+// Auto-login if nickname saved
+const savedNick = localStorage.getItem('fintrack_nickname');
+if (savedNick) {
+  document.getElementById('nickname-input').value = savedNick;
+  doLogin();
+} else {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+}
+
+// Enter key on login input
+document.getElementById('nickname-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
