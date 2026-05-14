@@ -53,9 +53,26 @@ async function doLogin() {
   btn.disabled = true;
 
   try {
+    // Ensure Supabase is initialized
+    if (!supabase) initSupabase();
+
     currentNickname = nick;
     localStorage.setItem('fintrack_nickname', nick);
-    await loadState();
+
+    // Try cloud load, fallback to local backup silently
+    try {
+      await loadState();
+    } catch(e) {
+      console.warn('Cloud load failed, using local backup:', e);
+      const backup = localStorage.getItem(STORAGE_KEY + '_' + nick);
+      if (backup) {
+        state = { ...state, ...JSON.parse(backup) };
+        document.getElementById('meta-goal-input').value = state.goalTotal;
+        document.getElementById('meta-saved-input').value = state.savedTotal;
+        document.getElementById('itau-base-input').value = state.itauBase || 0;
+      }
+    }
+
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('main-app').style.display = 'block';
 
@@ -65,8 +82,13 @@ async function doLogin() {
 
     initTheme();
     render();
+    if (state.transactions.length > 0) {
+      document.getElementById('clear-btn').style.display = 'inline-flex';
+    }
   } catch(e) {
+    console.error('Login error:', e);
     toast('Erro ao entrar. Tente novamente.');
+  } finally {
     btn.textContent = 'Entrar';
     btn.disabled = false;
   }
@@ -826,21 +848,23 @@ function toast(msg) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-initSupabase();
+// Init on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  initSupabase();
 
-// Auto-login if nickname saved
-const savedNick = localStorage.getItem('fintrack_nickname');
-if (savedNick) {
-  document.getElementById('nickname-input').value = savedNick;
-  doLogin();
-} else {
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('main-app').style.display = 'none';
-}
+  document.getElementById('nickname-input')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
 
-// Enter key on login input
-document.getElementById('nickname-input')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
+  // Auto-login if nickname saved
+  const savedNick = localStorage.getItem('fintrack_nickname');
+  if (savedNick) {
+    document.getElementById('nickname-input').value = savedNick;
+    doLogin();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('main-app').style.display = 'none';
+  }
 });
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
