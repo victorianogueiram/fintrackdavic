@@ -2,20 +2,26 @@
 
 const STORAGE_KEY = 'fintrack_v1';
 
-const CAT_COLORS = {
+const DEFAULT_CAT_COLORS = {
   'Alimentação': '#D85A30', 'Transporte': '#378ADD', 'Assinaturas': '#7F77DD',
   'Saúde': '#1D9E75', 'Lazer': '#D4537E', 'Moradia': '#BA7517',
   'Educação': '#185FA5', 'Vestuário': '#993556', 'PIX': '#888780',
   'Receita': '#1a7a52', 'Outros': '#888780',
 };
 
-const BASE_CATS = Object.keys(CAT_COLORS);
+const BASE_CATS = Object.keys(DEFAULT_CAT_COLORS);
+const CAT_COLORS = new Proxy({}, {
+  get(_, cat) {
+    return (state?.catColors && state.catColors[cat]) || DEFAULT_CAT_COLORS[cat] || '#888';
+  }
+});
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
 let state = {
   transactions: [],
   customCats: [],
+  catColors: {},
   budgets: [],
   rules: [],
   savedTotal: 0,
@@ -295,6 +301,9 @@ function parseItauXLS(arrayBuffer) {
         // Skip future transactions
         const txDate = parseDate(date);
         if (txDate && txDate > new Date()) continue;
+        // Try to extract time from col 2 (ag./origem sometimes has HH:MM)
+        const timeRaw = String(row[2] || '').trim();
+        const timeMatch = timeRaw.match(/\d{2}:\d{2}/);
         txs.push({
           id: state.nextId++,
           date,
@@ -303,6 +312,7 @@ function parseItauXLS(arrayBuffer) {
           cat: guessCategory(cleanName),
           val,
           src: 'Itaú',
+          time: timeMatch ? timeMatch[0] : null,
         });
       }
       if (saldoAnterior !== null) txs._saldoAnterior = saldoAnterior;
@@ -585,7 +595,9 @@ function render() {
   itauBalEl.className = 'card-val ' + (itauBal >= 0 ? 'pos' : 'neg');
   document.getElementById('c-itau-sub').textContent = itauData.length + ' transaç' + (itauData.length === 1 ? 'ão' : 'ões');
 
-  document.getElementById('c-inter-fat').textContent = fmt(interFatura);
+  const interEl = document.getElementById('c-inter-fat');
+  interEl.textContent = fmt(interFatura);
+  interEl.style.color = 'var(--orange)';
   document.getElementById('c-inter-sub').textContent = interTxCount + ' transaç' + (interTxCount === 1 ? 'ão' : 'ões');
 
   document.getElementById('c-saved').textContent = fmt(state.savedTotal);
@@ -730,6 +742,7 @@ function render() {
             ${bankLogo}
             <span class="tx-bank-name">${t.src && t.src !== 'demo' ? t.src : ''}</span>
           </div>
+          ${t.time ? `<span class="tx-time">${t.time}</span>` : ''}
           <button class="tx-edit-btn" onclick="startEdit(${t.id})" title="Editar">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
@@ -1030,36 +1043,43 @@ function renderCatsList() {
   const el = document.getElementById('cats-list');
   if (!el) return;
 
-  // All cats in use across transactions + custom cats
+  const q = (document.getElementById('cats-search')?.value || '').toLowerCase();
   const inUse = [...new Set(state.transactions.map(t => t.cat))];
   const custom = state.customCats || [];
-  const allUsed = [...new Set([...inUse, ...custom])].sort();
-  const base = new Set(BASE_CATS);
+  const allUsed = [...new Set([...inUse, ...custom])].sort()
+    .filter(c => !q || c.toLowerCase().includes(q));
 
   if (!allUsed.length) {
-    el.innerHTML = '<p style="font-size:13px;color:var(--label-3);text-align:center;padding:12px 0">Nenhuma categoria ainda</p>';
+    el.innerHTML = '<p style="font-size:13px;color:var(--label-3);text-align:center;padding:12px 0">Nenhuma categoria encontrada</p>';
     return;
   }
 
   el.innerHTML = allUsed.map(c => {
     const color = CAT_COLORS[c] || '#888';
     const count = state.transactions.filter(t => t.cat === c).length;
-    const isBase = base.has(c);
     return `<div class="cat-modal-row" id="cat-row-${encodeURIComponent(c)}">
-      <span class="cat-modal-dot" style="background:${color}"></span>
+      <input type="color" class="cat-color-input" value="${color}" title="Mudar cor"
+        onchange="updateCatColor('${c}', this.value)">
       <span class="cat-modal-name" id="cat-name-display-${encodeURIComponent(c)}">${c}</span>
       <input class="cat-modal-input form-input" id="cat-name-input-${encodeURIComponent(c)}" value="${c}" style="display:none;flex:1;padding:4px 8px;font-size:13px">
-      <span class="cat-modal-count">${count} transação${count !== 1 ? 'ões' : ''}</span>
+      <span class="cat-modal-count">${count} transaç${count === 1 ? 'ão' : 'ões'}</span>
       <div style="display:flex;gap:4px">
         <button class="icon-btn" onclick="startRenameCat('${c}')" title="Renomear">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button class="icon-btn" onclick="deleteCat('${c}')" title="Excluir" style="color:var(--red)" ${count > 0 ? '' : ''}>
+        <button class="icon-btn" onclick="deleteCat('${c}')" title="Excluir" style="color:var(--red)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>
     </div>`;
   }).join('');
+}
+
+function updateCatColor(cat, color) {
+  if (!state.catColors) state.catColors = {};
+  state.catColors[cat] = color;
+  saveState();
+  render();
 }
 
 function startRenameCat(cat) {
@@ -1127,3 +1147,44 @@ function addCatFromModal() {
   input.value = '';
   toast(`Categoria "${name}" adicionada`);
 }
+
+// ─── Export / Import ──────────────────────────────────────────────────────────
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `fintrack-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Dados exportados com sucesso');
+}
+
+document.getElementById('import-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!imported.transactions) {
+        toast('Arquivo inválido — não parece um backup do Fintrack');
+        return;
+      }
+      if (!confirm(`Importar backup de ${imported.transactions.length} transações? Os dados atuais serão substituídos.`)) return;
+      state = { ...state, ...imported };
+      saveState();
+      document.getElementById('meta-goal-input').value = state.goalTotal || 10000;
+      document.getElementById('meta-saved-input').value = state.savedTotal || 0;
+      document.getElementById('itau-base-input').value = state.itauBase || 0;
+      render();
+      toast('Backup importado com sucesso');
+    } catch(e) {
+      toast('Erro ao ler o arquivo. Verifique se é um backup válido.');
+    }
+  };
+  reader.readAsText(file);
+  this.value = '';
+});

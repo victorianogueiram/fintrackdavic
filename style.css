@@ -93,7 +93,7 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
-.app { max-width: 780px; margin: 0 auto; padding: 0 16px 80px; }
+.app { max-width: 1000px; margin: 0 auto; padding: 0 24px 80px; }
 
 /* ── Topbar ──────────────────────────────────────────────────────────────── */
 .topbar { display: flex; align-items: center; justify-content: space-between; padding: 20px 0 16px; gap: 12px; flex-wrap: wrap; }
@@ -245,7 +245,7 @@ body {
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end; z-index: 200; padding: 0; }
 @media (min-width: 600px) { .modal-overlay { align-items: center; padding: 1rem; } }
 .modal { background: var(--surface); border-radius: var(--radius-xl) var(--radius-xl) 0 0; width: 100%; box-shadow: var(--shadow-lg); }
-@media (min-width: 600px) { .modal { border-radius: var(--radius-xl); max-width: 420px; margin: 0 auto; } }
+@media (min-width: 600px) { .modal { border-radius: var(--radius-xl); max-width: 480px; margin: 0 auto; } }
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 20px 0; }
 .modal-title { font-size: 17px; font-weight: 600; }
 .modal-close { background: var(--surface-3); border: none; cursor: pointer; color: var(--label-2); width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
@@ -438,3 +438,19 @@ body {
   border-radius: var(--radius-pill);
   font-family: var(--font-mono);
 }
+
+/* ── Transaction time ────────────────────────────────────────────────────── */
+.tx-time { font-size: 11px; color: var(--label-3); flex-shrink: 0; font-family: var(--font-mono); }
+
+/* ── Cat color picker ────────────────────────────────────────────────────── */
+.cat-color-input {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: none;
+  flex-shrink: 0;
+}
+.cat-color-input::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.cat-color-input::-webkit-color-swatch { border: none; border-radius: 50%; }
