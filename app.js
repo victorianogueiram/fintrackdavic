@@ -234,6 +234,8 @@ function parseItauCSV(text) {
     // Clean name: remove trailing date suffix like "01/05" or "MARIANA01/05"
     const cleanName = rawName.replace(/\s*\d{2}\/\d{2}$/, '').trim();
 
+    const txDateCSV = parseDate(date.length === 5 ? date + '/' + new Date().getFullYear() : date);
+    if (txDateCSV && txDateCSV > new Date()) continue;
     txs.push({
       id: state.nextId++,
       date: date.length === 5 ? date + '/' + new Date().getFullYear() : date,
@@ -277,6 +279,9 @@ function parseItauXLS(arrayBuffer) {
         const val = typeof row[3] === 'number' ? row[3] : parseBrVal(String(row[3] || ''));
         if (!val) continue;
         const cleanName = rawName.replace(/\s*\d{2}\/\d{2}$/, '').trim();
+        // Skip future transactions
+        const txDate = parseDate(date);
+        if (txDate && txDate > new Date()) continue;
         txs.push({
           id: state.nextId++,
           date,
