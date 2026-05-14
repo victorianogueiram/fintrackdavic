@@ -30,141 +30,22 @@ let activePeriod = '30d';
 let activeType = 'all';
 let activeCat = '';
 
-// ─── Supabase REST ────────────────────────────────────────────────────────────
+// ─── Storage ──────────────────────────────────────────────────────────────────
 
-const SUPABASE_URL = 'https://dgloqihjyfzopzgcqepj.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbG9xaWhqeWZ6b3B6Z2NxZXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTMyMjYsImV4cCI6MjA5NDI4OTIyNn0.Q9qOezL4HTF6Km_AVsvcGpNcMv50tin1plWbHG0cOkU';
-let currentNickname = null;
 
-function sbHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'apikey': SUPABASE_ANON,
-    'Authorization': 'Bearer ' + SUPABASE_ANON,
-  };
-}
-
-async function sbGet(nickname) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/fintrack_users?nickname=eq.${encodeURIComponent(nickname)}&select=data`,
-    { headers: sbHeaders() }
-  );
-  if (!res.ok) throw new Error('GET failed: ' + res.status);
-  const rows = await res.json();
-  return rows[0]?.data || null;
-}
-
-async function sbUpsert(nickname, data) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/fintrack_users`,
-    {
-      method: 'POST',
-      headers: { ...sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify({ nickname, data, updated_at: new Date().toISOString() }),
-    }
-  );
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error('UPSERT failed: ' + err);
-  }
-}
-
-function initSupabase() {
-  // No SDK needed — using REST directly
-}
-
-// ─── Login ────────────────────────────────────────────────────────────────────
-
-async function doLogin() {
-  const input = document.getElementById('nickname-input');
-  const nick = input?.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-  if (!nick) { toast('Digite um nickname válido'); return; }
-
-  const btn = document.querySelector('.login-btn');
-  btn.textContent = 'Entrando...';
-  btn.disabled = true;
-
-  try {
-    // Ensure Supabase is initialized
-    // REST-based, no client needed
-
-    currentNickname = nick;
-    localStorage.setItem('fintrack_nickname', nick);
-
-    // Try cloud load, fallback to local backup silently
-    try {
-      await loadState();
-    } catch(e) {
-      console.warn('Cloud load failed, using local backup:', e);
-      const backup = localStorage.getItem(STORAGE_KEY + '_' + nick);
-      if (backup) {
-        state = { ...state, ...JSON.parse(backup) };
-        document.getElementById('meta-goal-input').value = state.goalTotal;
-        document.getElementById('meta-saved-input').value = state.savedTotal;
-        document.getElementById('itau-base-input').value = state.itauBase || 0;
-      }
-    }
-
-    // Always show the app regardless of cloud status
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'block';
-
-    const logo = document.getElementById('app-logo');
-    if (logo) logo.innerHTML = `fintrack <span class="nickname-pill">${nick}</span>`;
-
-    initTheme();
-    render();
-    if (state.transactions.length > 0) {
-      document.getElementById('clear-btn').style.display = 'inline-flex';
-    }
-  } catch(e) {
-    console.error('Login error:', e);
-    // Even on error, let the user in with empty state
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'block';
-    const logo = document.getElementById('app-logo');
-    if (logo) logo.innerHTML = `fintrack <span class="nickname-pill">${currentNickname}</span>`;
-    initTheme();
-    render();
-    toast('Carregando offline — dados locais');
-  } finally {
-    btn.textContent = 'Entrar';
-    btn.disabled = false;
-  }
-}
-
-function doLogout() {
-  if (!confirm('Sair da sessão?')) return;
-  localStorage.removeItem('fintrack_nickname');
-  currentNickname = null;
-  state = { transactions: [], customCats: [], budgets: [], rules: [], savedTotal: 0, goalTotal: 10000, itauBase: 0, nextId: 1, lastSaved: null };
-  document.getElementById('main-app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('nickname-input').value = '';
-}
 
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
-async function loadState() {
-  // Try local backup first (instant)
-  const backup = localStorage.getItem(STORAGE_KEY + '_' + currentNickname);
-  if (backup) {
-    try { state = { ...state, ...JSON.parse(backup) }; } catch(e) {}
-  }
-
-  // Then try cloud with 6s timeout
+function loadState() {
   try {
-    const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000));
-    const cloudData = await Promise.race([sbGet(currentNickname), timeout]);
-    if (cloudData) {
-      state = { ...state, ...cloudData };
-      localStorage.setItem(STORAGE_KEY + '_' + currentNickname, JSON.stringify(state));
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state = { ...state, ...parsed };
     }
-  } catch (e) {
-    console.warn('Cloud load failed, using local:', e.message);
+  } catch(e) {
+    console.warn('Erro ao carregar dados:', e);
   }
-
-  // Always update UI fields
   document.getElementById('meta-goal-input').value = state.goalTotal || 10000;
   document.getElementById('meta-saved-input').value = state.savedTotal || 0;
   document.getElementById('itau-base-input').value = state.itauBase || 0;
@@ -174,23 +55,15 @@ async function loadState() {
   }
 }
 
-let saveTimeout = null;
 function saveState() {
-  state.lastSaved = new Date().toISOString();
-  // Always save locally first (instant)
-  localStorage.setItem(STORAGE_KEY + '_' + currentNickname, JSON.stringify(state));
-  updateSaveStatus();
-  showSaveIndicator();
-  // Debounce cloud save 1.5s
-  clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(async () => {
-    if (!currentNickname) return;
-    try {
-      await sbUpsert(currentNickname, state);
-    } catch(e) {
-      console.warn('Cloud save failed:', e.message);
-    }
-  }, 1500);
+  try {
+    state.lastSaved = new Date().toISOString();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    updateSaveStatus();
+    showSaveIndicator();
+  } catch(e) {
+    console.warn('Erro ao salvar:', e);
+  }
 }
 
 function updateSaveStatus() {
@@ -886,22 +759,10 @@ function toast(msg) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-// Init — script is at end of body so DOM is ready
-initSupabase();
-
-document.getElementById('nickname-input')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
-
-// Auto-login if nickname saved
-const savedNick = localStorage.getItem('fintrack_nickname');
-if (savedNick) {
-  document.getElementById('nickname-input').value = savedNick;
-  doLogin();
-} else {
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('main-app').style.display = 'none';
-}
+// Init
+loadState();
+render();
+initTheme();
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
