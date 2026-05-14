@@ -34,7 +34,7 @@ let activeCat = '';
 
 const SUPABASE_URL = 'https://dgloqihjyfzopzgcqepj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbG9xaWhqeWZ6b3B6Z2NxZXBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTMyMjYsImV4cCI6MjA5NDI4OTIyNn0.Q9qOezL4HTF6Km_AVsvcGpNcMv50tin1plWbHG0cOkU';
-let supabase = null;
+let sbClient = null;
 let currentNickname = null;
 
 function initSupabase() {
@@ -42,7 +42,7 @@ function initSupabase() {
     // UMD build exposes window.supabase.createClient
     const lib = window.supabase;
     if (lib && lib.createClient) {
-      supabase = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
+      sbClient = lib.createClient(SUPABASE_URL, SUPABASE_KEY);
     } else {
       console.warn('Supabase SDK not found');
     }
@@ -64,7 +64,7 @@ async function doLogin() {
 
   try {
     // Ensure Supabase is initialized
-    if (!supabase) initSupabase();
+    if (!sbClient) initSupabase();
 
     currentNickname = nick;
     localStorage.setItem('fintrack_nickname', nick);
@@ -125,8 +125,8 @@ function doLogout() {
 
 async function loadState() {
   try {
-    if (!supabase || !currentNickname) return;
-    const { data, error } = await supabase
+    if (!sbClient || !currentNickname) return;
+    const { data, error } = await sbClient
       .from('fintrack_users')
       .select('data')
       .eq('nickname', currentNickname)
@@ -159,9 +159,9 @@ function saveState() {
   // Debounce remote save — avoid too many writes
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(async () => {
-    if (!supabase || !currentNickname) return;
+    if (!sbClient || !currentNickname) return;
     try {
-      await supabase.from('fintrack_users').upsert({
+      await sbClient.from('fintrack_users').upsert({
         nickname: currentNickname,
         data: state,
         updated_at: new Date().toISOString(),
@@ -865,24 +865,22 @@ function toast(msg) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
-// Init on DOM ready
-document.addEventListener('DOMContentLoaded', () => {
-  initSupabase();
+// Init — script is at end of body so DOM is ready
+initSupabase();
 
-  document.getElementById('nickname-input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
-
-  // Auto-login if nickname saved
-  const savedNick = localStorage.getItem('fintrack_nickname');
-  if (savedNick) {
-    document.getElementById('nickname-input').value = savedNick;
-    doLogin();
-  } else {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('main-app').style.display = 'none';
-  }
+document.getElementById('nickname-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
 });
+
+// Auto-login if nickname saved
+const savedNick = localStorage.getItem('fintrack_nickname');
+if (savedNick) {
+  document.getElementById('nickname-input').value = savedNick;
+  doLogin();
+} else {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+}
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
