@@ -187,6 +187,45 @@ label.f { display: block; font-size: 12px; font-weight: 500; color: var(--muted)
 .tx .ic svg { width: 22px; height: 22px; }
 .alert .ai svg { width: 22px; height: 22px; color: var(--alert-ink); }
 
+/* Decidir: resultado */
+.back-l { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: 16px; } .back-l svg { width: 18px; height: 18px; }
+.res-t { font-size: 46px; line-height: 1.02; margin: 12px 0 10px; font-weight: 400; }
+.res-s { font-weight: 500; font-size: 17px; margin-bottom: 14px; }
+.rbar { position: relative; height: 8px; border-radius: 99px; background: var(--track); } .rbar i { display: block; height: 100%; border-radius: 99px; background: var(--ink); } .rbar u { position: absolute; top: -4px; width: 2px; height: 16px; background: var(--ink); text-decoration: none; transform: translateX(-1px); }
+.alert-soft { background: var(--warn-bg); border-radius: 18px; padding: 16px 18px; margin-bottom: 14px; font-size: 16px; line-height: 1.45; } .alert-soft .link { font-size: inherit; }
+.next-t { font-size: 18px; line-height: 1.5; }
+.ul-l { display: block; text-decoration: underline; text-underline-offset: 6px; font-size: 16px; padding: 4px 0; }
+.btn.dark { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 18px; } .btn.dark svg { width: 20px; height: 20px; }
+
+/* Decidir: fila "para decidir hoje" */
+.segs { display: flex; gap: 6px; margin-bottom: 16px; } .segs i { flex: 1; height: 3px; border-radius: 9px; background: var(--line); } .segs i.on { background: var(--ink); }
+.dq { padding: 18px; }
+.dq-ic { width: 46px; height: 46px; border-radius: 14px; background: var(--tile); display: grid; place-items: center; } .dq-ic svg { width: 22px; height: 22px; }
+.dq-v { font-size: 52px; font-weight: 300; line-height: 1; letter-spacing: -.02em; } .dq-v small { font-size: 18px; font-weight: 400; letter-spacing: 0; }
+.dq-opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; text-align: left; padding: 17px 18px; border-radius: 18px; background: var(--tile); margin-bottom: 8px; font-size: 16px; }
+.dq-opt em { font-style: normal; color: var(--muted); font-size: 13px; } .dq-opt.dark { background: var(--ink); color: var(--bg); } .dq-opt.dark em { color: inherit; opacity: .7; }
+.ul-l.small { display: inline; font-size: 14px; color: var(--ink); }
+
+/* Metas */
+.rg-w { position: relative; flex: none; display: grid; place-items: center; } .rg-w b { position: absolute; font-weight: 400; font-size: 22px; } .rg-w.sm b { font-size: 15px; }
+.prox { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 18px; padding: 10px 14px 10px 10px; border-radius: 18px; background: rgba(255,255,255,.55); text-align: left; } .prox .grow { flex: 1; display: flex; flex-direction: column; } .prox b { font-weight: 500; font-size: 17px; } .prox svg { width: 18px; height: 18px; }
+.th { width: 46px; height: 46px; border-radius: 12px; background: var(--tile) center/cover; display: grid; place-items: center; } .th svg { width: 22px; height: 22px; }
+.stories { display: flex; gap: 14px; overflow-x: auto; padding: 4px 2px 16px; scrollbar-width: none; } .stories::-webkit-scrollbar { display: none; }
+.story { flex: none; width: 88px; display: flex; flex-direction: column; align-items: center; gap: 2px; } .story b { font-weight: 500; font-size: 15px; margin-top: 6px; } .story small { font-size: 13px; }
+.sc { position: relative; width: 84px; height: 84px; display: grid; place-items: center; } .sc .rg { position: absolute; inset: 0; width: 84px; height: 84px; } .sc.plus { border: 1px solid var(--line); border-radius: 50%; } .sc.plus svg { width: 26px; height: 26px; }
+.si { width: 70px; height: 70px; border-radius: 50%; background: var(--tile) center/cover; display: grid; place-items: center; } .si svg { width: 24px; height: 24px; }
+.mcard { background: var(--card); border-radius: 28px; overflow: hidden; margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--line); }
+.cover { position: relative; height: 190px; background: center/cover; display: flex; align-items: flex-end; cursor: pointer; } .cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0) 35%, rgba(30,15,20,.6)); } .cover.none { background: var(--hero); } .cover.none::after { background: none; }
+.cv-ic svg { width: 44px; height: 44px; opacity: .45; position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); }
+.cv-b { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; padding: 16px 18px; color: #fff; } .cover.none .cv-b { color: var(--ink); } .cv-b b { font-size: 22px; font-weight: 400; }
+.dots { position: absolute; z-index: 2; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,.45); backdrop-filter: blur(6px); display: grid; place-items: center; color: var(--ink); } .dots svg { width: 22px; height: 22px; }
+.stt { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 99px; border: 1px solid rgba(255,255,255,.55); background: rgba(30,20,25,.28); color: #fff; font-size: 14px; white-space: nowrap; } .stt i { width: 8px; height: 8px; border-radius: 50%; background: #8fd6a8; } .stt.warn i { background: #f0c070; } .stt.bad i { background: #f08a8a; } .stt.done i { background: #8fd6a8; }
+.cover.none .stt { background: var(--card); color: var(--ink); border-color: var(--line); }
+.mb { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 20px; cursor: pointer; } .mv { font-size: 38px; font-weight: 300; line-height: 1.1; } .mv small { font-size: 16px; font-weight: 400; margin-right: 2px; }
+.img-up { position: relative; height: 150px; border-radius: 22px; background: var(--tile) center/cover; display: grid; place-items: center; margin-bottom: 4px; overflow: hidden; border: 1px dashed var(--tile-line); }
+.img-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 99px; background: rgba(255,255,255,.85); color: #241b1e; cursor: pointer; font-size: 14px; } .img-btn svg { width: 16px; height: 16px; }
+.img-x { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.85); color: #241b1e; display: grid; place-items: center; } .img-x svg { width: 16px; height: 16px; }
+
 </style>
 </head>
 <body>
@@ -636,15 +675,16 @@ window.FT_CONFIG = {
     // impacto nos meses seguintes
     const comp = compromissosPorMes(P, addMonths(v.month, 1), 3);
     const sobra = r2(teto - projetado);
-    let veredito, titulo, texto;
+    let veredito, titulo, texto, passaRegra = false;
     if (ratio <= 0.85) { veredito = 'pode'; titulo = 'Pode ir'; texto = 'Cabe no mês com folga.'; }
-    else if (ratio <= 1) { veredito = 'cabe'; titulo = 'Cabe, mas com custo'; texto = 'Cabe dentro do limite, mas deixa pouca folga no mês.'; }
-    else { veredito = 'nao'; titulo = 'Não recomendo agora'; texto = 'Passa do limite que você definiu para o mês.'; }
+    else if (ratio <= 1) { veredito = 'cabe'; titulo = 'Cabe, mas'; texto = 'Cabe dentro do limite, mas deixa pouca folga no mês.'; }
+    else if (renda && projetado <= renda) { veredito = 'cabe'; titulo = 'Cabe, mas'; texto = 'Passa da regra que você definiu para o mês.'; passaRegra = true; }
+    else { veredito = 'nao'; titulo = 'Melhor não agora'; texto = 'Passa da sua renda do mês.'; }
     if (necessidade === 'impulso') { texto = 'Compra por impulso: espere até amanhã antes de decidir. ' + texto; if (veredito === 'pode') { titulo = 'Espere até amanhã'; veredito = 'espere'; } }
     else if (necessidade === 'quero' && veredito === 'pode') { texto = 'Não é urgente, mas cabe. ' + texto; }
     if (necessidade === 'preciso' && veredito === 'nao') texto += ' Como é necessário, vale parcelar em mais vezes ou esperar a próxima fatura.';
     const alternativa = (veredito === 'nao' || veredito === 'cabe') && forma !== 'avista' ? null : null;
-    return { veredito, titulo, texto, escolha, projetado: r2(projetado), teto: r2(teto), sobra, ratio, base: r2(base), proximos: comp, usouJurosEstimado: !!escolha.estimado || !!escolha.comJuros, alternativa };
+    return { veredito, titulo, texto, passaRegra, renda, limitePct: S.settings.limitePct, pctHoje: r2(base / renda * 100), pctCom: r2(projetado / renda * 100), escolha, projetado: r2(projetado), teto: r2(teto), sobra, ratio, base: r2(base), proximos: comp, usouJurosEstimado: !!escolha.estimado || !!escolha.comJuros, alternativa };
   }
 
   /* ---------- reserva e metas ---------- */
@@ -659,6 +699,22 @@ window.FT_CONFIG = {
     const [y, m] = meta.data.split('-').map(Number); const t = new Date(today);
     const n = Math.max(1, (y - t.getFullYear()) * 12 + (m - 1 - t.getMonth()) + 1);
     return { falta: r2(falta), meses: n, mensal: r2(falta / n) };
+  }
+
+  /* status da meta: compara o guardado com onde deveria estar hoje, em linha reta entre o início e o prazo */
+  function metaStatus(m, todayISO) {
+    const atual = +m.atual || 0;
+    if (atual >= m.alvo) return { key: 'done', label: 'Atingida', esperado: m.alvo };
+    const [y, mo] = m.data.split('-').map(Number); const fim = new Date(y, mo, 0, 23, 59);
+    const t = new Date(todayISO + 'T12:00:00'); const ini = new Date((m.inicio || todayISO) + 'T12:00:00');
+    if (t > fim) return { key: 'bad', label: 'Prazo vencido', esperado: m.alvo };
+    const total = Math.max(1, fim - ini), dec = Math.min(1, Math.max(0, (t - ini) / total));
+    const a0 = m.atual0 != null ? +m.atual0 : atual;
+    const esperado = r2(a0 + (m.alvo - a0) * dec);
+    const falta = esperado - atual;
+    if (falta <= m.alvo * 0.01) return { key: 'ok', label: 'No ritmo', esperado };
+    if (atual >= a0 + (esperado - a0) * 0.75) return { key: 'warn', label: 'Quase no ritmo', esperado, falta: r2(falta) };
+    return { key: 'bad', label: 'Atrasada', esperado, falta: r2(falta) };
   }
 
   /* ---------- atenção / indo bem ---------- */
@@ -677,7 +733,7 @@ window.FT_CONFIG = {
     return out;
   }
 
-  const api = { DEFAULT_CATS, newState, ruleKey, guessCat, importLines, addManual, learn, monthStats, assinaturasMes, monthsWithData, parcelamentos, compromissosPorMes, recorrentes, planoMes, visaoMes, sugerirLimites, decidir, reserva, metaMensal, alertas, isExpense, isIncome, addMonths, monthLabel, ym, r2, uid };
+  const api = { DEFAULT_CATS, newState, ruleKey, guessCat, importLines, addManual, learn, monthStats, assinaturasMes, monthsWithData, parcelamentos, compromissosPorMes, recorrentes, planoMes, visaoMes, sugerirLimites, decidir, reserva, metaMensal, metaStatus, alertas, isExpense, isIncome, addMonths, monthLabel, ym, r2, uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FTEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -726,6 +782,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   let S = E.newState();
   let nick = null;
   let view = { name: 'resumo', sub: null, month: null, periodo: 'mes', tipo: 'todas', cat: '', conta: '', q: '', selMode: false, sel: new Set() };
+  let decSkip = [];
   let dec = { step: 0, item: '', nec: '', preco: '', forma: '', parcelas: '6', juros: '', res: null };
   let loginMode = 'login';
   let askQueue = [];
@@ -776,6 +833,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     ['cats', 'tx', 'metas', 'decisoes', 'faturas', 'assinaturas'].forEach((k) => { if (!Array.isArray(o[k])) o[k] = base[k]; });
     E.DEFAULT_CATS.filter((c) => ['Impostos', 'A conferir'].includes(c.name)).forEach((c) => { if (!o.cats.some((x) => x.name === c.name)) o.cats.push({ id: E.uid(), name: c.name, color: c.color }); });
     ['rules', 'budget', 'dismissed'].forEach((k) => { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; });
+    o.metas.forEach((m) => { if (!m.inicio) m.inicio = today(); if (m.atual0 == null) m.atual0 = +m.atual || 0; });
     return o;
   }
   function persistLocal() { try { const { _seen, ...clean } = S; Cloud.LS.set(LSK(), JSON.stringify({ S: clean, dirty })); } catch (e) {} }
@@ -986,6 +1044,16 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     const d = dec; let h = '';
     const pend = S.decisoes.filter((x) => x.status === 'pendente');
     if (d.step === 0) {
+      const due = pend.filter((x) => x.seguir <= today()).sort((x, y) => decSkip.indexOf(x.id) - decSkip.indexOf(y.id) || (x.criada < y.criada ? -1 : 1));
+      const later = pend.filter((x) => x.seguir > today());
+      if (due.length) {
+        const x = due[0], nm = { preciso: 'preciso mesmo', quero: 'quero muito', impulso: 'foi impulso' }[x.nec] || '';
+        h += '<div class="row between" style="margin:4px 0 8px"><b style="font-size:19px">Para decidir hoje</b><span class="muted small">1 de ' + due.length + '</span></div><div class="segs">' + due.map((_, i) => '<i class="' + (i === 0 ? 'on' : '') + '"></i>').join('') + '</div>' +
+          '<div class="card dq"><div class="row" style="gap:12px;margin-bottom:14px"><div class="dq-ic">' + ic('shopping-bag') + '</div><span class="muted">' + esc(x.item) + '</span></div><div class="dq-v"><small>R$</small> ' + esc(brl(x.preco).replace('R$', '').trim()) + '</div><p class="muted small" style="margin:6px 0 16px">você pediu para pensar em ' + dm(x.criada) + (nm ? ' · ' + nm : '') + '</p><b style="display:block;margin-bottom:10px">E agora?</b>' +
+          '<button class="dq-opt dark" data-act="decStill" data-id="' + x.id + '"><span>Ainda quero</span><em>ver se cabe</em></button><button class="dq-opt" data-act="decBought" data-id="' + x.id + '"><span>Já comprei</span></button><button class="dq-opt" data-act="decDrop" data-id="' + x.id + '"><span>Desisti</span><em>boa decisão</em></button></div>' +
+          '<div class="row between small muted" style="margin:4px 2px 10px"><span>' + (due.length > 1 ? 'Depois: ' + due.slice(1, 3).map((y) => esc(y.item)).join(' e ') : '') + '</span>' + (due.length > 1 ? '<button class="ul-l small" data-act="decSkip" data-id="' + x.id + '">Pular este</button>' : '') + '</div>';
+      }
+      if (later.length) h += '<p class="small muted" style="margin:0 2px 18px">Mais ' + later.length + ' pode esperar: <b style="color:var(--ink)">' + later.map((y) => esc(y.item) + ' (' + dm(y.seguir) + ')').join(', ') + '</b></p>';
       h += '<div class="card">' + illo('bag', 'small') + '<h2>Antes de comprar</h2><p class="muted small" style="margin-bottom:12px">Vou olhar seu mês, as parcelas que já estão por vir e dizer se cabe.</p><label class="f" style="margin-top:0">O que você quer comprar?</label><input class="input" id="dItem" placeholder="Ex.: tênis, fone, jaqueta" value="' + esc(d.item) + '"><div style="height:14px"></div><button class="btn" data-act="dNext">Continuar</button></div>';
     } else if (d.step === 1) {
       h += '<div class="card"><h2>' + esc(d.item) + '</h2><p class="mid" style="margin-bottom:12px">Quanto você precisa disso?</p>' +
@@ -997,12 +1065,20 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     } else if (d.step === 4) {
       h += '<div class="card"><h2>Parcelamento</h2><label class="f" style="margin-top:0">Quantas parcelas?</label><input class="input" id="dParc" inputmode="numeric" value="' + esc(d.parcelas) + '"><label class="f">Tem juros?</label><div class="seg">' + [['nao', 'Não'], ['sim', 'Sim'], ['nao-sei', 'Não sei']].map(([k, l]) => '<button class="' + (d.juros === k ? 'on' : '') + '" data-act="dJuros" data-v="' + k + '">' + l + '</button>').join('') + '</div><p class="muted small">Se houver juros ou você não souber, estimo com a taxa de parcelamento do cartão (5,99% a.m.).</p><div style="height:14px"></div><button class="btn" data-act="dCalc">Ver resultado</button></div>';
     } else if (d.step === 5 && d.res) {
-      const r = d.res; h += '<div class="verdict ' + r.veredito + '"><h2>' + esc(r.titulo) + '</h2><p>' + esc(r.texto) + '</p></div>';
-      if (r.escolha) h += '<div class="card"><h2>Resumo</h2><div class="stack"><div class="row between"><span class="muted">Forma</span><b>' + (r.escolha.forma === 'avista' ? 'À vista' : r.escolha.n + 'x de ' + brl(r.escolha.mensal)) + '</b></div>' + (r.usouJurosEstimado ? '<div class="row between"><span class="muted">Total estimado c/ juros</span><b>' + brl(r.escolha.total) + '</b></div>' : '') + '<div class="row between"><span class="muted">Gasto do mês + parcelas por vir</span><b>' + brl(r.base) + '</b></div><div class="row between"><span class="muted">Com essa compra</span><b>' + brl(r.projetado) + '</b></div><div class="row between"><span class="muted">Seu limite do mês</span><b>' + brl(r.teto) + '</b></div><div class="row between"><span class="muted">Sobra</span><b class="' + (r.sobra < 0 ? 'orange' : 'pos') + '">' + brl(r.sobra) + '</b></div></div></div>';
-      h += '<div class="stack"><button class="btn" data-act="dSave" data-v="comprei">Vou comprar</button><button class="btn ghost" data-act="dSave" data-v="amanha">Na dúvida, decide amanhã</button><button class="btn ghost" data-act="dSave" data-v="desisti">Desisti</button><button class="link" data-act="dReset" style="display:block;margin:6px auto">Nova análise</button></div>';
+      const r = d.res, lim = r.limitePct, pc = r.pctCom, ph = r.pctHoje, rd = (n) => Math.round(n);
+      const sub = r.veredito === 'pode' ? 'Cabe com folga dentro da regra dos ' + lim + '%' : r.veredito === 'cabe' ? (r.passaRegra ? 'Cabe, mas passa da regra dos ' + lim + '%' : 'Cabe, mas chega perto da regra dos ' + lim + '%') : r.veredito === 'espere' ? 'Compra por impulso: durma sobre isso' : 'Passa da sua renda do mês';
+      const forma = r.escolha ? (r.escolha.forma === 'avista' ? 'à vista' : r.escolha.n + 'x de ' + brl(r.escolha.mensal)) : '';
+      const proximo = r.veredito === 'nao' ? 'Esta compra levaria seus gastos a ' + rd(pc) + '% da renda. Vale esperar, juntar antes ou parcelar em mais vezes.' : r.veredito === 'espere' ? r.texto : r.veredito === 'cabe' ? 'Neste mês seus gastos iriam a ' + rd(pc) + '% da renda: sobram só ' + Math.max(0, 100 - rd(pc)) + '% para guardar. Se preferir, junte antes.' : 'Neste mês seus gastos iriam a ' + rd(pc) + '% da renda. Pode comprar tranquila.';
+      h += '<div class="row between" style="margin:2px 0 12px"><button class="back-l" data-act="dBack2">' + ic('back') + '<span>Voltar</span></button><span class="muted small">A resposta</span></div>';
+      h += '<div class="card hero"><p class="muted small">' + esc(d.item) + ' de ' + brl(+d.preco) + ', ' + forma + '</p><div class="res-t serif">' + esc(r.titulo) + '</div><p class="res-s">' + esc(sub) + '</p><div class="rbar"><i style="width:' + Math.min(100, pc) + '%"></i><u style="left:' + Math.min(100, lim) + '%"></u></div><p class="muted small" style="margin-top:8px">' + rd(ph) + '% hoje → ' + rd(pc) + '% com a compra · limite ' + lim + '%</p></div>';
+      if (ph >= lim * 0.85 || pc > lim) h += '<div class="alert-soft">Seu plano está ' + (ph >= lim ? 'apertado' : 'quase cheio') + ': ' + rd(ph) + '% da renda já tem destino. <button class="link" data-act="go" data-v="orcamento">Ver onde abrir espaço</button></div>';
+      h += '<div class="card"><p class="muted small" style="margin-bottom:8px">Próximo passo</p><p class="next-t">' + esc(proximo) + '</p></div>';
+      h += '<span class="ul-l">Mudar a compra</span><div class="pills" style="margin:10px 0 18px">' + [['preciso', 'Preciso mesmo'], ['quero', 'Quero muito'], ['impulso', 'Impulso']].map(([k, l]) => '<button class="pill' + (d.nec === k ? ' on' : '') + '" data-act="dNecRe" data-v="' + k + '">' + l + '</button>').join('') + '</div>';
+      h += '<button class="ul-l" data-act="dHow">Como cheguei nisso</button>';
+      if (d.how) h += '<div class="card" style="margin-top:10px"><div class="stack"><div class="row between"><span class="muted">Gasto do mês + parcelas + assinaturas</span><b>' + brl(r.base) + '</b></div>' + (r.usouJurosEstimado ? '<div class="row between"><span class="muted">Total estimado c/ juros</span><b>' + brl(r.escolha.total) + '</b></div>' : '') + '<div class="row between"><span class="muted">Com essa compra</span><b>' + brl(r.projetado) + '</b></div><div class="row between"><span class="muted">Seu limite do mês</span><b>' + brl(r.teto) + '</b></div><div class="row between"><span class="muted">Sobra</span><b class="' + (r.sobra < 0 ? 'orange' : 'pos') + '">' + brl(r.sobra) + '</b></div></div></div>';
+      h += '<div class="stack" style="margin-top:18px"><button class="btn dark" data-act="dMeta">' + ic('target') + '<span>Virar meta</span></button><div class="pills" style="justify-content:center"><button class="pill" data-act="dSave" data-v="comprei">Vou comprar</button><button class="pill" data-act="dSave" data-v="amanha">Decidir amanhã</button><button class="pill" data-act="dSave" data-v="desisti">Desisti</button></div><button class="btn conferir" data-act="dReset">Voltar ao Decidir</button></div>';
     }
     if (d.step > 0 && d.step < 5) h += '<p style="text-align:center;margin:6px 0"><button class="link" data-act="dBack">Voltar</button></p>';
-    if (d.step === 0 && pend.length) h += '<div class="card"><h2>Para decidir amanhã</h2>' + pend.map((x) => '<div class="row between" style="padding:8px 0"><span>' + esc(x.item) + ' <span class="muted small">' + brl(x.preco) + '</span></span><span class="small muted">' + (x.seguir <= today() ? 'hoje' : dm(x.seguir)) + '</span></div>').join('') + '</div>';
     const hist = S.decisoes.filter((x) => x.status !== 'pendente').slice(-5).reverse();
     if (d.step === 0 && hist.length) h += '<div class="card"><h2>Últimas decisões</h2>' + hist.map((x) => '<div class="row between" style="padding:8px 0"><span>' + esc(x.item) + '</span><span class="small muted">' + ({ comprei: 'comprou', desisti: 'desistiu', ainda: 'ainda quer' }[x.status] || x.status) + ' · ' + brl(x.preco) + '</span></div>').join('') + '</div>';
     return h;
@@ -1027,10 +1103,21 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     h += '<div class="card" style="padding:4px 16px">' + L.map((i) => '<div class="tx" data-act="subEdit" data-id="' + i.id + '"><div class="ic" style="background:' + catObj('Assinaturas').color + '22;color:' + catObj('Assinaturas').color + '">' + catIc('Assinaturas') + '</div><div class="mid-col"><div class="nm">' + esc(i.nome) + '</div><div class="muted small">' + (i.forma === 'pix' ? 'PIX' : 'Cartão') + ' · todo dia ' + i.dia + ' · ' + '⭐'.repeat(i.imp || 2) + '</div></div><div class="money">' + brl(i.valor) + '<div class="muted small" style="text-align:right;font-weight:400">por mês</div></div></div>').join('') + '</div>';
     return h;
   }
+  const ring = (pct, size, sw, col) => { const r = (size - sw) / 2, c = 2 * Math.PI * r, p = Math.min(100, Math.max(0, pct)); return '<svg class="rg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="' + sw + '"/><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="' + (col || 'var(--accent)') + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + (c * p / 100).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/></svg>'; };
+  const imgStyle = (m) => m.img ? ' style="background-image:url(' + m.img + ')"' : '';
   function vMetas() {
-    let h = back() + '<button class="btn" data-act="metaNew" style="margin-bottom:12px">Nova meta</button>';
-    if (!S.metas.length) return h + '<div class="empty">' + illo('target') + 'Crie uma meta para saber quanto guardar por mês.</div>';
-    return h + S.metas.map((m) => { const c = E.metaMensal(m, today()); const pct = Math.min(100, (m.atual || 0) / m.alvo * 100); return '<div class="card" data-act="metaEdit" data-id="' + m.id + '"><div class="row between"><b>' + esc(m.nome) + '</b><span class="muted small">até ' + m.data.slice(5) + '/' + m.data.slice(0, 4) + '</span></div><div class="bar" style="margin:10px 0"><i style="width:' + pct + '%"></i></div><div class="row between small"><span class="muted">' + brl(m.atual || 0) + ' de ' + brl(m.alvo) + '</span><b>' + (c.falta > 0 ? 'Guardar ' + brl(c.mensal) + '/mês' : 'Meta atingida') + '</b></div></div>'; }).join('');
+    const M = S.metas; let h = '';
+    if (!M.length) return '<button class="btn" data-act="metaNew" style="margin-bottom:12px">Nova meta</button><div class="empty">' + illo('target') + 'Crie uma meta com valor, prazo e uma foto.<br>Eu aviso se você está no ritmo.</div>';
+    const tAtual = M.reduce((s, m) => s + (+m.atual || 0), 0), tAlvo = M.reduce((s, m) => s + m.alvo, 0), pct = tAlvo ? tAtual / tAlvo * 100 : 0;
+    const abertas = M.filter((m) => (+m.atual || 0) < m.alvo), mensal = abertas.reduce((s, m) => s + E.metaMensal(m, today()).mensal, 0);
+    const prox = abertas.slice().sort((x, y) => (x.data < y.data ? -1 : 1))[0];
+    h += '<div class="card hero"><div class="row" style="gap:16px;align-items:center"><div class="rg-w">' + ring(pct, 104, 11) + '<b>' + Math.round(pct) + '%</b></div><div><p class="muted">Guardado nas metas</p><div class="big" style="font-size:38px">' + brl0(tAtual) + '</div><p class="small">de ' + brl0(tAlvo) + '</p>' + (mensal ? '<p class="muted small" style="margin-top:6px">' + brl0(mensal) + ' por mês</p>' : '') + '</div></div>' +
+      (prox ? '<button class="prox" data-act="metaEdit" data-id="' + prox.id + '"><span class="th"' + imgStyle(prox) + '>' + (prox.img ? '' : ic('target')) + '</span><span class="grow"><small class="muted">Próxima a chegar</small><b>' + esc(prox.nome) + ' · ' + prox.data.slice(5) + '/' + prox.data.slice(0, 4) + '</b></span>' + ic('caret-right') + '</button>' : '') + '</div>';
+    h += '<div class="stories">' + M.map((m) => { const p = Math.min(100, (m.atual || 0) / m.alvo * 100); return '<button class="story" data-act="metaEdit" data-id="' + m.id + '"><span class="sc">' + ring(p, 92, 3) + '<span class="si"' + imgStyle(m) + '>' + (m.img ? '' : ic('target')) + '</span></span><b>' + esc(m.nome.split(' ')[0]) + '</b><small class="muted">' + Math.round(p) + '%</small></button>'; }).join('') + '<button class="story" data-act="metaNew"><span class="sc plus">' + ic('plus') + '</span><b>Nova</b><small class="muted">meta</small></button></div>';
+    h += M.map((m) => { const c = E.metaMensal(m, today()), st = E.metaStatus(m, today()), p = Math.min(100, (m.atual || 0) / m.alvo * 100);
+      return '<div class="mcard"><div class="cover' + (m.img ? '' : ' none') + '"' + imgStyle(m) + ' data-act="metaEdit" data-id="' + m.id + '">' + (m.img ? '' : '<span class="cv-ic">' + ic('target') + '</span>') + '<button class="dots" data-act="metaEdit" data-id="' + m.id + '" aria-label="Editar">' + ic('dots-three') + '</button><div class="cv-b"><b>' + esc(m.nome) + '</b><span class="stt ' + st.key + '"><i></i>' + st.label + '</span></div></div>' +
+        '<div class="mb" data-act="metaEdit" data-id="' + m.id + '"><div><div class="mv"><small>R$</small>' + Math.round(m.atual || 0).toLocaleString('pt-BR') + '</div><p class="muted small">guardados de ' + brl0(m.alvo) + '</p><p class="muted small">' + (st.key === 'done' ? 'Meta atingida' : brl0(c.mensal) + ' por mês · até ' + m.data.slice(5) + '/' + m.data.slice(0, 4)) + '</p>' + (st.falta > 0 ? '<p class="small" style="margin-top:4px;color:var(--' + (st.key === 'bad' ? 'bad' : 'warn') + ')">Deveria ter ' + brl0(st.esperado) + ' hoje</p>' : '') + '</div><div class="rg-w sm">' + ring(p, 64, 7) + '<b>' + Math.round(p) + '%</b></div></div></div>'; }).join('');
+    return h;
   }
   function vReserva() {
     const alvo = +S.settings.reservaAlvo || 0, tenho = +S.settings.reservaAtual || 0, pct = alvo ? Math.min(100, tenho / alvo * 100) : 0;
@@ -1191,8 +1278,9 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     saveMeta: (el) => {
       const nome = $('mNome').value.trim(), alvo = parseBR($('mAlvo').value), data = $('mData').value; if (!nome || !(alvo > 0) || !data) return toastMsg('Preencha nome, valor e data.');
       const atual = parseBR($('mAtual').value) || 0; const id = el.dataset.id;
-      if (id) Object.assign(S.metas.find((m) => m.id === id), { nome, alvo, data, atual }); else S.metas.push({ id: E.uid(), nome, alvo, data, atual }); save(); closeSheet(); render();
+      if (id) Object.assign(S.metas.find((m) => m.id === id), { nome, alvo, data, atual, img: metaImg }); else S.metas.push({ id: E.uid(), nome, alvo, data, atual, atual0: atual, inicio: today(), img: metaImg }); save(); closeSheet(); render();
     },
+    mImgDel: () => { metaImg = null; const b = $('mImgBox'); b.style.backgroundImage = ''; const x = b.querySelector('.img-x'); if (x) x.remove(); b.querySelector('span').textContent = 'Adicionar imagem'; },
     delMeta: (el) => { S.metas = S.metas.filter((m) => m.id !== el.dataset.id); save(); closeSheet(); render(); },
     saldoEdit: () => { openSheet('<h3>O que tenho na conta</h3><p class="muted small" style="margin-bottom:6px">Saldo atual da conta corrente. Atualize quando quiser.</p><label class="f">Saldo</label><input class="input" id="saldoIn" inputmode="numeric" data-mask="money" data-neg placeholder="R$ 0,00" style="font-size:26px;font-weight:300" value="' + fmtIn(S.settings.saldoConta) + '"><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saldoSave">Salvar</button>' + (S.settings.saldoConta != null ? '<button class="btn danger" data-act="saldoDel">Remover</button>' : '') + '</div>'); setTimeout(() => { const i = $('saldoIn'); if (i) i.focus(); }, 250); },
     saldoSave: () => { const raw = $('saldoIn').value.trim(); if (!raw) return toastMsg('Informe o saldo.'); const v = parseBR(raw); if (isNaN(v)) return toastMsg('Valor inválido.'); S.settings.saldoConta = v; S.settings.saldoData = today(); save(); closeSheet(); render(); toastMsg('Saldo atualizado'); },
@@ -1222,13 +1310,19 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     dForma: (el) => { dec.forma = el.dataset.v; if (dec.forma === 'parcelado') { dec.step = 4; render(); } else calcDecisao(); },
     dJuros: (el) => { dec.juros = el.dataset.v; [...el.parentNode.children].forEach((b) => b.classList.toggle('on', b === el)); },
     dCalc: () => { dec.parcelas = String(parseInt($('dParc').value, 10) || 2); if (!dec.juros) return toastMsg('Diga se tem juros.'); calcDecisao(); },
+    dBack2: () => { dec.step = dec.forma === 'parcelado' ? 4 : 3; render(); },
+    dHow: () => { dec.how = !dec.how; render(); },
+    dNecRe: (el) => { dec.nec = el.dataset.v; calcDecisao(); },
+    dMeta: () => { sheetMeta(null); $('mNome').value = dec.item; $('mAlvo').value = fmtIn(+dec.preco); $('mData').value = E.addMonths(E.ym(today()), 3); },
     dBack: () => { dec.step = dec.step === 4 ? 3 : dec.step - 1; render(); }, dReset: () => { dec = { step: 0, item: '', nec: '', preco: '', forma: '', parcelas: '6', juros: '', res: null }; render(); },
     dSave: (el) => {
       const v = el.dataset.v; const base = { id: E.uid(), item: dec.item, nec: dec.nec, preco: +dec.preco, criada: today(), veredito: dec.res && dec.res.veredito };
       S.decisoes.push(v === 'amanha' ? { ...base, status: 'pendente', seguir: tomorrow() } : { ...base, status: v });
       save(); toastMsg(v === 'amanha' ? 'Combinado. Amanhã eu pergunto de novo.' : v === 'comprei' ? 'Anotado' : 'Boa decisão'); A.dReset();
     },
-    decStill: (el) => { const d = S.decisoes.find((x) => x.id === el.dataset.id); if (d) { dec = { step: 1, item: d.item, nec: d.nec || '', preco: String(d.preco), forma: '', parcelas: '6', juros: '', res: null }; d.status = 'ainda'; save(); view.name = 'decidir'; render(); } },
+    decBought: (el) => { const d = S.decisoes.find((x) => x.id === el.dataset.id); if (d) { d.status = 'comprei'; save(); render(); toastMsg('Anotado'); } },
+    decSkip: (el) => { decSkip = decSkip.filter((i) => i !== el.dataset.id); decSkip.push(el.dataset.id); render(); },
+    decStill: (el) => { const d = S.decisoes.find((x) => x.id === el.dataset.id); if (d) { dec = { step: 3, item: d.item, nec: d.nec || '', preco: String(d.preco), forma: '', parcelas: '6', juros: '', res: null }; d.status = 'ainda'; save(); view.name = 'decidir'; render(); } },
     decDrop: (el) => { const d = S.decisoes.find((x) => x.id === el.dataset.id); if (d) { d.status = 'desisti'; save(); render(); toastMsg('Boa decisão'); } },
     /* ajustes */
     catsMgr: () => { openSheet('<h3>Categorias</h3><div style="height:8px"></div>' + S.cats.map((c) => '<div class="row" style="margin-bottom:8px"><input type="color" value="' + c.color + '" data-chg="catColor" data-c="' + esc(c.name) + '" style="width:44px;height:44px;border:0;background:none"><input class="input" value="' + esc(c.name) + '" data-chg="catName" data-c="' + esc(c.name) + '"><button class="link" data-act="catDel" data-c="' + esc(c.name) + '">Excluir</button></div>').join('') + '<div class="row"><input class="input" id="catNew" placeholder="Nova categoria"><button class="btn small" data-act="catAdd">Adicionar</button></div>'); },
@@ -1246,8 +1340,14 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     subForma = s ? s.forma || 'cartao' : 'cartao'; subImp = s ? s.imp || 2 : 2;
     openSheet(sheetHead(s ? 'Editar assinatura' : 'Nova assinatura') + '<div class="item-card"><span class="il">Quanto custa por mês?</span><input class="bare big-in" id="sVal" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + (s ? fmtIn(s.valor) : '') + '"><input class="bare nm-in" id="sNome" placeholder="Nome, ex.: Netflix, Spotify" value="' + esc(s ? s.nome : '') + '"><span class="il" style="display:block;margin-top:12px">Paga como?</span><div class="pills" id="subFormas"><button class="pill' + (subForma === 'cartao' ? ' on' : '') + '" data-act="subForma" data-v="cartao">Cartão de crédito</button><button class="pill' + (subForma === 'pix' ? ' on' : '') + '" data-act="subForma" data-v="pix">PIX</button></div><span class="il" style="display:block;margin-top:12px">Importância</span><div class="pills" id="subImps">' + [1, 2, 3].map((n) => '<button class="pill' + (subImp === n ? ' on' : '') + '" data-act="subImp" data-v="' + n + '">' + '⭐'.repeat(n) + '</button>').join('') + '</div><span class="il" style="display:block;margin-top:12px">Dia da cobrança</span><input class="bare nm-in" id="sDia" inputmode="numeric" maxlength="2" placeholder="Ex.: 15" value="' + (s ? s.dia : '') + '"></div><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saveSub" data-id="' + (s ? s.id : '') + '">Salvar</button>' + (s ? '<button class="btn danger" data-act="delSub" data-id="' + s.id + '">Excluir</button>' : '') + '</div>');
   }
+  let metaImg = null;
   function sheetMeta(m) {
-    openSheet('<h3>' + (m ? 'Editar meta' : 'Nova meta') + '</h3><label class="f">Nome</label><input class="input" id="mNome" value="' + esc(m ? m.nome : '') + '" placeholder="Ex.: viagem, notebook"><label class="f">Quanto quero juntar</label><input class="input" id="mAlvo" inputmode="numeric" data-mask="money" value="' + (m ? fmtIn(m.alvo) : '') + '"><label class="f">Até quando</label><input class="input" id="mData" type="month" value="' + (m ? m.data : '') + '"><label class="f">Quanto já tenho</label><input class="input" id="mAtual" inputmode="numeric" data-mask="money" value="' + (m && m.atual ? fmtIn(m.atual) : '') + '"><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saveMeta" data-id="' + (m ? m.id : '') + '">Salvar</button>' + (m ? '<button class="btn danger" data-act="delMeta" data-id="' + m.id + '">Excluir</button>' : '') + '</div>');
+    metaImg = m && m.img ? m.img : null;
+    openSheet(sheetHead(m ? 'Editar meta' : 'Nova meta') + '<div class="img-up" id="mImgBox"' + (metaImg ? ' style="background-image:url(' + metaImg + ')"' : '') + '><label class="img-btn">' + ic('plus') + '<span>' + (metaImg ? 'Trocar imagem' : 'Adicionar imagem') + '</span><input type="file" id="mImgIn" accept="image/*" hidden></label>' + (metaImg ? '<button class="img-x" data-act="mImgDel" aria-label="Remover imagem">' + ic('x') + '</button>' : '') + '</div>' +
+      '<label class="f">Nome</label><input class="input" id="mNome" value="' + esc(m ? m.nome : '') + '" placeholder="Ex.: viagem, notebook"><label class="f">Quanto quero juntar</label><input class="input" id="mAlvo" inputmode="numeric" data-mask="money" value="' + (m ? fmtIn(m.alvo) : '') + '"><label class="f">Até quando</label><input class="input" id="mData" type="month" value="' + (m ? m.data : '') + '"><label class="f">Quanto já tenho guardado</label><input class="input" id="mAtual" inputmode="numeric" data-mask="money" value="' + (m && m.atual ? fmtIn(m.atual) : '') + '"><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saveMeta" data-id="' + (m ? m.id : '') + '">Salvar</button>' + (m ? '<button class="btn danger" data-act="delMeta" data-id="' + m.id + '">Excluir</button>' : '') + '</div>');
+  }
+  function resizeImg(file, cb) {
+    const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => { const W = 720, k = Math.min(1, W / im.width), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); cb(c.toDataURL('image/jpeg', 0.72)); }; im.onerror = () => toastMsg('Não consegui abrir essa imagem.'); im.src = fr.result; }; fr.readAsDataURL(file);
   }
 
   /* ---------- eventos ---------- */
@@ -1256,6 +1356,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     if (fn) { e.preventDefault(); fn(el, e); }
   });
   document.addEventListener('change', (e) => {
+    if (e.target.id === 'mImgIn' && e.target.files[0]) { resizeImg(e.target.files[0], (d) => { metaImg = d; const b = $('mImgBox'); if (b) { b.style.backgroundImage = 'url(' + d + ')'; b.querySelector('span').textContent = 'Trocar imagem'; } }); return; }
     const el = e.target.closest('[data-chg]'); if (!el) return; const c = el.dataset.c;
     if (el.dataset.chg === 'budget') { const v = parseBR(el.value); if (isNaN(v) || v <= 0) delete S.budget[c]; else S.budget[c] = v; save(); render(); }
     else if (el.dataset.chg === 'catColor') { const o = S.cats.find((x) => x.name === c); if (o) { o.color = el.value; save(); } }
