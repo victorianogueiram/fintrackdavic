@@ -12,7 +12,7 @@
 /* Fintrack — mobile first. Identidade: creme quente, card em degradê pastel, serifa itálica no título. */
 :root {
   --bg: #f8f1ee; --card: #ffffff; --ink: #241b1e; --muted: #8f8284; --line: #eadfdb; --soft: #f4e3e6;
-  --accent: #a8365f; --accent-ink: #ffffff; --ok: #3f8f5f; --warn: #c8741f; --bad: #c0394f;
+  --accent: #c4527f; --accent-ink: #ffffff; --ok: #3f8f5f; --warn: #c8741f; --bad: #c0394f;
   --ok-bg: #e4f2e9; --warn-bg: #fbeedd; --bad-bg: #fbe4e8; --alert-bg: #f4e3e5; --alert-ink: #8a2f4a;
   --hero: radial-gradient(120% 130% at 12% 8%, #fbe0e8 0%, rgba(251,224,232,0) 58%), radial-gradient(90% 110% at 92% 18%, #e3d5f1 0%, rgba(227,213,241,0) 62%), radial-gradient(110% 100% at 78% 105%, #f8dac4 0%, rgba(248,218,196,0) 62%), #f7e4e9;
   --hero-line: #ecd3dc; --track: rgba(255,255,255,.78);
@@ -69,7 +69,7 @@ h1, h2, h3, p { margin: 0; }
 .hero .bar { background: var(--track); height: 6px; }
 .hero .bar > i, .hero .bar.ok > i { background: var(--ink); } .hero .bar.warn > i { background: var(--warn); } .hero .bar.bad > i { background: var(--bad); }
 
-.fab { position: fixed; right: 18px; bottom: calc(22px + env(safe-area-inset-bottom)); width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 32px; line-height: 1; box-shadow: 0 10px 26px rgba(168,54,95,.38); z-index: 25; }
+.fab { position: fixed; right: 18px; bottom: calc(22px + env(safe-area-inset-bottom)); width: 58px; height: 58px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-size: 32px; line-height: 1; box-shadow: 0 10px 26px rgba(196,82,127,.38); z-index: 25; }
 
 .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
@@ -408,7 +408,7 @@ window.FT_CONFIG = {
   function newState() {
     return {
       v: 2, cats: JSON.parse(JSON.stringify(DEFAULT_CATS)), rules: {}, tx: [], budget: {}, metas: [], decisoes: [],
-      faturas: [], settings: { renda: 0, limitePct: 90, saldoConta: null, reservaMeses: 6, tema: 'auto' }, dismissed: {}
+      faturas: [], settings: { renda: 0, limitePct: 90, saldoConta: null, saldoData: null, reservaAlvo: 0, reservaAtual: 0, reservaMeses: 6, tema: 'auto' }, dismissed: {}
     };
   }
 
@@ -675,6 +675,8 @@ window.FT_CONFIG = {
   const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
   const dm = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7);
   const parseBR = (s) => { const t = String(s || '').replace(/[^\d,.-]/g, ''); if (!t) return NaN; return t.includes(',') ? parseFloat(t.replace(/\./g, '').replace(',', '.')) : parseFloat(t); };
+  const fmtIn = (n) => { n = +n; if (!n) return ''; return (n < 0 ? '-' : '') + 'R$ ' + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  const maskMoney = (str, neg) => { const isNeg = neg && /-/.test(str); const d = String(str).replace(/\D/g, '').slice(0, 11); const c = parseInt(d || '0', 10); if (!c) return isNeg ? '-' : ''; return (isNeg ? '-' : '') + 'R$ ' + (c / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   const catObj = (name) => S.cats.find((c) => c.name === name) || { name: name || 'Sem categoria', color: '#9a9aa5' };
 
   /* ---------- ícones ---------- */
@@ -691,7 +693,7 @@ window.FT_CONFIG = {
   };
   const CAT_IC = { 'Alimentação': 'food', 'Transporte': 'car', 'Assinaturas': 'repeat', 'Saúde': 'heart', 'Lazer': 'smile', 'Moradia': 'home', 'Educação': 'book', 'Vestuário': 'bag', 'PIX': 'send', 'Receita': 'down', 'Pet': 'paw', 'Telefone': 'phone', 'Cartão de Crédito': 'card', 'Transferência': 'swap', 'Compras': 'bag', 'Feira': 'food' };
   const ic = (n, sw) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (sw || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"><path d="' + (IC[n] || IC.tag) + '"/></svg>';
-  const bigMoney = (n) => '<span class="big ' + (n < 0 ? 'orange' : '') + '">' + (n < 0 ? '-' : '') + '<span class="cur">R$</span>' + Math.abs(Math.round(n)).toLocaleString('pt-BR') + '</span>';
+  const bigMoney = (n) => '<span class="big ' + (n < 0 ? 'orange' : '') + '">' + (n < 0 ? '-' : '') + '<span class="cur">R$</span>' + (Math.abs(n) % 1 >= 0.005 && Math.abs(n) % 1 <= 0.995 ? Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.abs(Math.round(n)).toLocaleString('pt-BR')) + '</span>';
   const catIc = (cat) => ic(CAT_IC[cat] || 'tag');
 
   /* ---------- persistência e sincronização ---------- */
@@ -808,7 +810,7 @@ window.FT_CONFIG = {
   /* ----- Resumo ----- */
   function vResumo() {
     const m = currentMonth(), ref = refDate(); const v = E.visaoMes(S, ref); const al = E.alertas(S, today());
-    if (!S.tx.length) return '<div class="card hero"><h2>Bem-vinda</h2><p class="mid" style="margin-bottom:6px">Comece enviando um extrato ou fatura</p><p class="muted small" style="margin-bottom:14px">Toque no + para enviar o extrato da conta (Excel, CSV, OFX ou PDF) e a fatura do cartão (PDF). Gastos do dia a dia você lança manualmente.</p><button class="btn" data-act="plus">Adicionar</button></div>';
+    if (!S.tx.length) return '<div class="card hero"><h2>Vamos começar</h2><p class="muted small" style="margin-bottom:14px">Informe o que você tem na conta e lance seus gastos do dia a dia. Quando quiser, envie o extrato ou a fatura para eu preencher o resto.</p><div class="stack"><button class="btn" data-act="saldoEdit">O que tenho na conta</button><button class="btn ghost" data-act="newExpense">Lançar gasto</button><button class="btn ghost" data-act="pickFile">Enviar extrato ou fatura</button></div></div>' + (S.settings.saldoConta != null ? saldoCard() : '') + (S.settings.renda ? '' : '<div class="card"><h2>Renda mensal</h2><p class="muted small" style="margin-bottom:10px">Com a renda eu calculo quanto você ainda pode gastar no mês.</p><button class="btn small" data-act="rendaEdit">Informar renda</button></div>');
     let h = monthNav();
     if (v.posso == null) {
       h += '<div class="card hero"><h2>Quanto posso gastar</h2><p class="muted" style="margin-bottom:12px">Informe sua renda para eu calcular quanto ainda pode gastar no mês.</p><button class="btn small" data-act="goAjustes">Informar renda</button></div>';
@@ -819,7 +821,9 @@ window.FT_CONFIG = {
         (dias && v.posso > 0 ? '<p class="small" style="margin-top:12px">Dá cerca de <b>' + brl(v.posso / dias) + '</b> por dia até o fim do mês.</p>' : '') + '</div>';
     }
     h += '<div class="grid2"><div class="card"><h2>Gastos</h2><div class="mid">' + brl(v.gasto) + '</div></div><div class="card"><h2>Receitas</h2><div class="mid pos">' + brl(v.receita) + '</div></div></div>';
-    const f = S.faturas.slice().sort((a, b) => (a.vencimentoISO < b.vencimentoISO ? 1 : -1))[0];
+    h += saldoCard();
+    const fatMes = (x) => (x.vencimentoISO || (x.vencimento ? x.vencimento.slice(6) + '-' + x.vencimento.slice(3, 5) + '-' + x.vencimento.slice(0, 2) : '')).slice(0, 7);
+    const f = S.faturas.filter((x) => fatMes(x) === m).sort((x, y) => (x.vencimentoISO < y.vencimentoISO ? 1 : -1))[0];
     if (f) h += '<div class="card"><h2>Fatura do cartão</h2><div class="row between"><div class="mid orange">' + brl(f.total) + '</div><div class="muted small">vence ' + esc(f.vencimento.slice(0, 5)) + '</div></div></div>';
     if (al.atencao.length) h += '<div class="stack" style="margin-bottom:14px"><b style="font-size:17px;display:block;padding:4px 4px 0">Precisa da sua atenção</b>' + al.atencao.map(alertItem).join('') + '</div>';
     if (al.bem.length) h += '<div class="card"><h2>Você está indo bem</h2><div class="stack">' + al.bem.map((b) => '<div class="note ok">' + esc(b.texto) + '</div>').join('') + '</div></div>';
@@ -829,6 +833,10 @@ window.FT_CONFIG = {
       h += '<div class="card"><h2>Para onde foi o dinheiro</h2>' + cats.slice(0, 8).map(([c, val]) => { const co = catObj(c); return '<div class="cat-row" data-act="goCat" data-c="' + esc(c) + '"><div class="row between"><span class="row"><span class="badge" style="background:' + co.color + '22;color:' + co.color + '">' + esc(c) + '</span></span><span class="money">' + brl(val) + '</span></div><div class="bar"><i style="width:' + (val / max * 100) + '%;background:' + co.color + '"></i></div></div>'; }).join('') + '</div>';
     }
     return h;
+  }
+  function saldoCard() {
+    const st = S.settings, has = st.saldoConta != null;
+    return '<div class="card" data-act="saldoEdit"><div class="row between"><div><h2 style="margin-bottom:4px">O que tenho na conta</h2><div class="mid">' + (has ? brl(st.saldoConta) : 'Informar saldo') + '</div></div><span class="link">' + (has ? 'Atualizar' : 'Adicionar') + '</span></div>' + (has && st.saldoData ? '<p class="muted small" style="margin-top:6px">Atualizado em ' + dm(st.saldoData) + '</p>' : '') + '</div>';
   }
   function alertItem(a) {
     if (a.tipo === 'decisao') return '<div class="note warn"><div style="margin-bottom:10px">' + esc(a.texto) + '</div><div class="row"><button class="btn small" data-act="decStill" data-id="' + a.id + '">Ainda quero</button><button class="btn small ghost" data-act="decDrop" data-id="' + a.id + '">Desisti</button></div></div>';
@@ -847,7 +855,7 @@ window.FT_CONFIG = {
     const nomeMes = E.monthLabel(currentMonth()).split(' de ')[0];
     let h = monthNav();
     if (v.posso == null) {
-      h += '<div class="card hero"><h2>Plano do mês</h2><p class="muted" style="margin-bottom:12px">Informe sua renda mensal para eu montar o plano e mostrar quanto está livre.</p><div class="row"><input class="input" id="rendaIn" inputmode="decimal" placeholder="Ex.: 6.000,00"><button class="btn small" data-act="saveRenda">Salvar</button></div></div>';
+      h += '<div class="card hero"><h2>Plano do mês</h2><p class="muted" style="margin-bottom:12px">Informe sua renda mensal para eu montar o plano e mostrar quanto está livre.</p><div class="row"><input class="input" id="rendaIn" inputmode="numeric" data-mask="money" placeholder="R$ 0,00"><button class="btn small" data-act="saveRenda">Salvar</button></div></div>';
     } else {
       const usado = v.gasto + v.parcelasPendentes, pct = v.plano.plano ? usado / v.plano.plano * 100 : 0, cls = pct > 100 ? 'bad' : pct > 85 ? 'warn' : 'ok';
       h += '<div class="card hero"><div class="row between small muted"><span>Plano de ' + esc(nomeMes) + '</span><span>' + brl0(v.plano.plano) + '</span></div><div style="margin:8px 0 14px">' + bigMoney(v.posso) + ' <span class="muted">' + (v.posso < 0 ? 'acima do plano' : 'livres') + '</span></div><div class="bar ' + cls + '"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:8px"><span>Gastou ' + brl0(v.gasto) + (v.parcelasPendentes ? ' + ' + brl0(v.parcelasPendentes) + ' em parcelas a cair' : '') + '</span><span>' + Math.round(pct) + '%</span></div></div>';
@@ -911,7 +919,7 @@ window.FT_CONFIG = {
       h += '<div class="card"><h2>' + esc(d.item) + '</h2><p class="mid" style="margin-bottom:12px">Quanto você precisa disso?</p>' +
         [['preciso', 'Preciso muito', 'Melhora meu dia a dia'], ['quero', 'Quero muito', 'Mas não é necessário nem urgente'], ['impulso', 'Compra impulsiva', 'Deu vontade agora']].map(([k, a, b]) => '<button class="opt' + (d.nec === k ? ' on' : '') + '" data-act="dNec" data-v="' + k + '"><b>' + a + '</b><span>' + b + '</span></button>').join('') + '</div>';
     } else if (d.step === 2) {
-      h += '<div class="card"><h2>' + esc(d.item) + '</h2><label class="f" style="margin-top:0">Quanto custa?</label><input class="input" id="dPreco" inputmode="decimal" placeholder="R$ 0,00" value="' + esc(d.preco) + '"><div style="height:14px"></div><button class="btn" data-act="dNext">Continuar</button></div>';
+      h += '<div class="card"><h2>' + esc(d.item) + '</h2><label class="f" style="margin-top:0">Quanto custa?</label><input class="input" id="dPreco" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + esc(d.preco) + '"><div style="height:14px"></div><button class="btn" data-act="dNext">Continuar</button></div>';
     } else if (d.step === 3) {
       h += '<div class="card"><h2>Como você vai pagar?</h2>' + [['avista', 'À vista', 'Sai tudo neste mês'], ['parcelado', 'Parcelado', 'Divido em parcelas'], ['sistema', 'Você decide', 'Escolho a forma que pesa menos']].map(([k, a, b]) => '<button class="opt' + (d.forma === k ? ' on' : '') + '" data-act="dForma" data-v="' + k + '"><b>' + a + '</b><span>' + b + '</span></button>').join('') + '</div>';
     } else if (d.step === 4) {
@@ -951,13 +959,13 @@ window.FT_CONFIG = {
     return h + S.metas.map((m) => { const c = E.metaMensal(m, today()); const pct = Math.min(100, (m.atual || 0) / m.alvo * 100); return '<div class="card" data-act="metaEdit" data-id="' + m.id + '"><div class="row between"><b>' + esc(m.nome) + '</b><span class="muted small">até ' + m.data.slice(5) + '/' + m.data.slice(0, 4) + '</span></div><div class="bar" style="margin:10px 0"><i style="width:' + pct + '%"></i></div><div class="row between small"><span class="muted">' + brl(m.atual || 0) + ' de ' + brl(m.alvo) + '</span><b>' + (c.falta > 0 ? 'Guardar ' + brl(c.mensal) + '/mês' : 'Meta atingida') + '</b></div></div>'; }).join('');
   }
   function vReserva() {
-    const r = E.reserva(S, today()); const tenho = +S.settings.reservaAtual || 0; const pct = r.alvo ? Math.min(100, tenho / r.alvo * 100) : 0;
-    if (!r.alvo) return back() + '<div class="empty">Preciso de pelo menos um mês de gastos para calcular sua reserva.</div>';
-    return back() + '<div class="card hero"><h2>Meta da reserva</h2><div class="big">' + brl(r.alvo) + '</div><p class="muted small">' + r.meses + ' meses de gastos · média de ' + brl(r.mediaMensal) + ' por mês (base: ' + r.base + ' mês(es))</p></div><div class="card"><h2>Quanto já tenho</h2><div class="row"><input class="input" id="resIn" inputmode="decimal" placeholder="R$ 0,00" value="' + (tenho ? String(tenho).replace('.', ',') : '') + '"><button class="btn small" data-act="saveRes">Salvar</button></div><div class="bar" style="margin:14px 0 8px"><i style="width:' + pct + '%"></i></div><p class="small muted">' + pct.toFixed(0) + '% da meta · cobre ' + (r.mediaMensal ? (tenho / r.mediaMensal).toFixed(1).replace('.', ',') : 0) + ' meses</p></div>';
+    const alvo = +S.settings.reservaAlvo || 0, tenho = +S.settings.reservaAtual || 0, pct = alvo ? Math.min(100, tenho / alvo * 100) : 0;
+    return back() + '<div class="card hero"><div class="row between small muted"><span>Reserva de emergência</span><span>' + (alvo ? brl0(alvo) : 'sem meta') + '</span></div><div style="margin:8px 0 14px">' + bigMoney(tenho) + ' <span class="muted">guardados</span></div><div class="bar"><i style="width:' + pct + '%"></i></div><div class="row between small muted" style="margin-top:10px"><span>' + (alvo ? (tenho >= alvo ? 'Meta atingida' : 'Faltam ' + brl0(alvo - tenho)) : 'Defina uma meta abaixo') + '</span><span>' + Math.round(pct) + '%</span></div></div>' +
+      '<div class="card"><h2>Meus valores</h2><label class="f" style="margin-top:0">Meta da reserva</label><input class="input" id="resAlvo" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + fmtIn(alvo) + '"><label class="f">Quanto tenho guardado</label><input class="input" id="resAtual" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + fmtIn(tenho) + '"><div style="height:14px"></div><button class="btn" data-act="saveReserva">Salvar</button></div>';
   }
   function vAjustes() {
     const s = S.settings;
-    return back() + '<div class="card"><h2>Orçamento</h2><label class="f" style="margin-top:0">Renda mensal</label><input class="input" id="aRenda" inputmode="decimal" value="' + (s.renda ? String(s.renda).replace('.', ',') : '') + '"><label class="f">Limite de gasto (% da renda)</label><input class="input" id="aLim" inputmode="numeric" value="' + s.limitePct + '"><label class="f">Meses da reserva de emergência</label><input class="input" id="aRes" inputmode="numeric" value="' + s.reservaMeses + '"><div style="height:14px"></div><button class="btn" data-act="saveAjustes">Salvar</button></div>' +
+    return back() + '<div class="card"><h2>Orçamento</h2><label class="f" style="margin-top:0">Renda mensal</label><input class="input" id="aRenda" inputmode="numeric" data-mask="money" value="' + (s.renda ? fmtIn(s.renda) : '') + '"><label class="f">Limite de gasto (% da renda)</label><input class="input" id="aLim" inputmode="numeric" value="' + s.limitePct + '"><div style="height:14px"></div><button class="btn" data-act="saveAjustes">Salvar</button></div>' +
       '<div class="card"><h2>Aparência</h2><div class="seg">' + [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Escuro']].map(([k, l]) => '<button class="' + (s.tema === k ? 'on' : '') + '" data-act="tema" data-v="' + k + '">' + l + '</button>').join('') + '</div></div>' +
       '<div class="card" style="padding:4px 16px"><button class="menu-item" data-act="catsMgr"><b>Categorias</b><span class="muted">›</span></button><button class="menu-item" data-act="exportBk"><b>Exportar backup</b><span class="muted">›</span></button><button class="menu-item" data-act="importBk"><b>Importar backup</b><span class="muted">›</span></button><button class="menu-item" data-act="logout"><b>Sair</b><span class="muted">›</span></button></div>' +
       '<button class="btn danger" data-act="wipe">Apagar todos os dados</button>';
@@ -970,17 +978,17 @@ window.FT_CONFIG = {
   const catChips = (sel, act) => '<div class="chips" style="flex-wrap:wrap;overflow:visible">' + S.cats.map((c) => '<button class="chip' + (sel === c.name ? ' on' : '') + '" data-act="' + act + '" data-c="' + esc(c.name) + '"><span class="dot" style="background:' + c.color + '"></span>' + esc(c.name) + '</button>').join('') + '</div>';
 
   function sheetPlus() {
-    openSheet('<h3>Adicionar</h3><p class="muted small" style="margin-bottom:14px">O que você quer fazer?</p><button class="opt" data-act="newExpense"><b>Lançar gasto</b><span>Registre um gasto do dia a dia em segundos</span></button><button class="opt" data-act="pickFile"><b>Extrato ou fatura</b><span>Excel, CSV, OFX ou PDF da conta e do cartão Itaú</span></button>');
+    openSheet('<h3>Adicionar</h3><p class="muted small" style="margin-bottom:14px">O que você quer fazer?</p><button class="opt" data-act="newExpense"><b>Lançar gasto</b><span>Registre um gasto do dia a dia em segundos</span></button><button class="opt" data-act="saldoEdit"><b>O que tenho na conta</b><span>Informe o saldo atual da conta corrente</span></button><button class="opt" data-act="pickFile"><b>Extrato ou fatura</b><span>Excel, CSV, OFX ou PDF da conta e do cartão Itaú</span></button>');
   }
   let expCat = 'Alimentação', expConta = 'cartao';
   function sheetExpense() {
     expCat = ''; expConta = 'cartao';
-    openSheet('<h3>Lançar gasto</h3><label class="f">Valor</label><input class="input" id="eVal" inputmode="decimal" placeholder="R$ 0,00" style="font-size:24px;font-weight:700"><label class="f">Descrição</label><input class="input" id="eNome" placeholder="Ex.: almoço, Uber"><label class="f">Categoria</label><div id="eCats">' + catChips(expCat, 'eCat') + '</div><label class="f">Pago com</label><div class="seg" id="eConta"><button class="on" data-act="eConta" data-v="cartao">Cartão de crédito</button><button data-act="eConta" data-v="cc">Conta corrente</button></div><label class="f">Data</label><input class="input" id="eData" type="date" value="' + today() + '"><div style="height:16px"></div><button class="btn" data-act="saveExpense">Lançar</button>');
+    openSheet('<h3>Lançar gasto</h3><label class="f">Valor</label><input class="input" id="eVal" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" style="font-size:24px;font-weight:700"><label class="f">Descrição</label><input class="input" id="eNome" placeholder="Ex.: almoço, Uber"><label class="f">Categoria</label><div id="eCats">' + catChips(expCat, 'eCat') + '</div><label class="f">Pago com</label><div class="seg" id="eConta"><button class="on" data-act="eConta" data-v="cartao">Cartão de crédito</button><button data-act="eConta" data-v="cc">Conta corrente</button></div><label class="f">Data</label><input class="input" id="eData" type="date" value="' + today() + '"><div style="height:16px"></div><button class="btn" data-act="saveExpense">Lançar</button>');
     setTimeout(() => { const i = $('eVal'); if (i) i.focus(); }, 250);
   }
   function sheetEdit(t) {
     editingId = t.id;
-    openSheet('<h3>Editar lançamento</h3><label class="f">Nome</label><input class="input" id="xNome" value="' + esc(t.nome) + '"><div class="grid2"><div><label class="f">Valor</label><input class="input" id="xVal" inputmode="decimal" value="' + String(t.valor).replace('.', ',') + '"></div><div><label class="f">Data</label><input class="input" id="xData" type="date" value="' + t.data + '"></div></div><label class="f">Categoria</label><div id="xCats">' + catChips(t.cat, 'xCat') + '</div><label class="f">Conta</label><div class="seg"><button class="' + (t.conta === 'cartao' ? 'on' : '') + '" data-act="xConta" data-v="cartao">Cartão</button><button class="' + (t.conta === 'cc' ? 'on' : '') + '" data-act="xConta" data-v="cc">Conta corrente</button></div><label class="row small" style="margin-top:12px"><input type="checkbox" id="xLearn" checked> Lembrar para lançamentos parecidos</label><div style="height:14px"></div><div class="stack"><button class="btn" data-act="saveEdit">Salvar</button><button class="btn danger" data-act="delTx">Excluir</button></div>');
+    openSheet('<h3>Editar lançamento</h3><label class="f">Nome</label><input class="input" id="xNome" value="' + esc(t.nome) + '"><div class="grid2"><div><label class="f">Valor</label><input class="input" id="xVal" inputmode="numeric" data-mask="money" data-neg value="' + fmtIn(t.valor) + '"></div><div><label class="f">Data</label><input class="input" id="xData" type="date" value="' + t.data + '"></div></div><label class="f">Categoria</label><div id="xCats">' + catChips(t.cat, 'xCat') + '</div><label class="f">Conta</label><div class="seg"><button class="' + (t.conta === 'cartao' ? 'on' : '') + '" data-act="xConta" data-v="cartao">Cartão</button><button class="' + (t.conta === 'cc' ? 'on' : '') + '" data-act="xConta" data-v="cc">Conta corrente</button></div><label class="row small" style="margin-top:12px"><input type="checkbox" id="xLearn" checked> Lembrar para lançamentos parecidos</label><div style="height:14px"></div><div class="stack"><button class="btn" data-act="saveEdit">Salvar</button><button class="btn danger" data-act="delTx">Excluir</button></div>');
     sheet_x = { cat: t.cat, conta: t.conta };
   }
   let sheet_x = { cat: null, conta: 'cartao' };
@@ -1078,9 +1086,9 @@ window.FT_CONFIG = {
     askSkip: () => { if (sheet_ask) askQueue = askQueue.filter((k) => k !== sheet_ask.k); S.dismissed[today()] = true; save(); showAsk(); },
     saveRenda: () => { const v = parseBR($('rendaIn').value); S.settings.renda = isNaN(v) ? 0 : v; save(); render(); toastMsg('Renda salva'); },
     applySug: () => { const s = E.sugerirLimites(S, today()); if (s) { S.budget = s; save(); render(); toastMsg('Limites sugeridos aplicados'); } },
-    saveAjustes: () => { const r = parseBR($('aRenda').value); S.settings.renda = isNaN(r) ? 0 : r; S.settings.limitePct = Math.min(100, Math.max(30, parseInt($('aLim').value, 10) || 90)); S.settings.reservaMeses = Math.min(24, Math.max(1, parseInt($('aRes').value, 10) || 6)); save(); render(); toastMsg('Ajustes salvos'); },
+    saveAjustes: () => { const r = parseBR($('aRenda').value); S.settings.renda = isNaN(r) ? 0 : r; S.settings.limitePct = Math.min(100, Math.max(30, parseInt($('aLim').value, 10) || 90)); save(); render(); toastMsg('Ajustes salvos'); },
     tema: (el) => { S.settings.tema = el.dataset.v; applyTheme(); save(); render(); },
-    saveRes: () => { const v = parseBR($('resIn').value); S.settings.reservaAtual = isNaN(v) ? 0 : v; save(); render(); },
+    saveReserva: () => { const a = parseBR($('resAlvo').value), t = parseBR($('resAtual').value); S.settings.reservaAlvo = isNaN(a) ? 0 : a; S.settings.reservaAtual = isNaN(t) ? 0 : t; save(); render(); toastMsg('Reserva salva'); },
     metaNew: () => sheetMeta(null), metaEdit: (el) => sheetMeta(S.metas.find((m) => m.id === el.dataset.id)),
     saveMeta: (el) => {
       const nome = $('mNome').value.trim(), alvo = parseBR($('mAlvo').value), data = $('mData').value; if (!nome || !(alvo > 0) || !data) return toastMsg('Preencha nome, valor e data.');
@@ -1088,14 +1096,17 @@ window.FT_CONFIG = {
       if (id) Object.assign(S.metas.find((m) => m.id === id), { nome, alvo, data, atual }); else S.metas.push({ id: E.uid(), nome, alvo, data, atual }); save(); closeSheet(); render();
     },
     delMeta: (el) => { S.metas = S.metas.filter((m) => m.id !== el.dataset.id); save(); closeSheet(); render(); },
+    saldoEdit: () => { openSheet('<h3>O que tenho na conta</h3><p class="muted small" style="margin-bottom:6px">Saldo atual da conta corrente. Atualize quando quiser.</p><label class="f">Saldo</label><input class="input" id="saldoIn" inputmode="numeric" data-mask="money" data-neg placeholder="R$ 0,00" style="font-size:24px;font-weight:600" value="' + fmtIn(S.settings.saldoConta) + '"><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saldoSave">Salvar</button>' + (S.settings.saldoConta != null ? '<button class="btn danger" data-act="saldoDel">Remover</button>' : '') + '</div>'); setTimeout(() => { const i = $('saldoIn'); if (i) i.focus(); }, 250); },
+    saldoSave: () => { const raw = $('saldoIn').value.trim(); if (!raw) return toastMsg('Informe o saldo.'); const v = parseBR(raw); if (isNaN(v)) return toastMsg('Valor inválido.'); S.settings.saldoConta = v; S.settings.saldoData = today(); save(); closeSheet(); render(); toastMsg('Saldo atualizado'); },
+    saldoDel: () => { S.settings.saldoConta = null; S.settings.saldoData = null; save(); closeSheet(); render(); },
     orcView: (el) => { view.orc = el.dataset.v; render(); },
     limEdit: (el) => { const c = el.dataset.c, lim = +S.budget[c] || 0, g = (E.visaoMes(S, refDate()).porCat[c] || 0);
-      openSheet('<h3>' + esc(c) + '</h3><p class="muted small">Gasto neste mês: ' + brl(g) + '</p><label class="f">Limite mensal</label><input class="input" id="limIn" inputmode="decimal" placeholder="R$ 0,00" value="' + (lim ? String(lim).replace('.', ',') : '') + '"><div style="height:14px"></div><div class="stack"><button class="btn" data-act="limSave" data-c="' + esc(c) + '">Salvar</button><button class="btn ghost" data-act="goCat" data-c="' + esc(c) + '">Ver lançamentos</button>' + (lim ? '<button class="btn danger" data-act="limDel" data-c="' + esc(c) + '">Remover limite</button>' : '') + '</div>'); setTimeout(() => { const i = $('limIn'); if (i) i.focus(); }, 250); },
+      openSheet('<h3>' + esc(c) + '</h3><p class="muted small">Gasto neste mês: ' + brl(g) + '</p><label class="f">Limite mensal</label><input class="input" id="limIn" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + (lim ? fmtIn(lim) : '') + '"><div style="height:14px"></div><div class="stack"><button class="btn" data-act="limSave" data-c="' + esc(c) + '">Salvar</button><button class="btn ghost" data-act="goCat" data-c="' + esc(c) + '">Ver lançamentos</button>' + (lim ? '<button class="btn danger" data-act="limDel" data-c="' + esc(c) + '">Remover limite</button>' : '') + '</div>'); setTimeout(() => { const i = $('limIn'); if (i) i.focus(); }, 250); },
     limSave: (el) => { const v = parseBR($('limIn').value); if (isNaN(v) || v <= 0) delete S.budget[el.dataset.c]; else S.budget[el.dataset.c] = v; save(); closeSheet(); render(); },
     limDel: (el) => { delete S.budget[el.dataset.c]; save(); closeSheet(); render(); },
     limAdd: () => openSheet('<h3>Definir limite</h3><p class="muted small" style="margin-bottom:10px">Escolha a categoria</p>' + catChips('', 'limPick')),
     limPick: (el) => { A.limEdit(el); },
-    rendaEdit: () => { openSheet('<h3>Renda mensal</h3><div class="row"><input class="input" id="rendaIn" inputmode="decimal" placeholder="Ex.: 6.000,00" value="' + (S.settings.renda ? String(S.settings.renda).replace('.', ',') : '') + '"><button class="btn small" data-act="saveRenda">Salvar</button></div><p class="muted small" style="margin-top:10px">O teto de gasto é ' + S.settings.limitePct + '% da renda. Ajuste em Mais › Ajustes.</p>'); },
+    rendaEdit: () => { openSheet('<h3>Renda mensal</h3><div class="row"><input class="input" id="rendaIn" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + (S.settings.renda ? fmtIn(S.settings.renda) : '') + '"><button class="btn small" data-act="saveRenda">Salvar</button></div><p class="muted small" style="margin-top:10px">O teto de gasto é ' + S.settings.limitePct + '% da renda. Ajuste em Mais › Ajustes.</p>'); },
     orcFix: (el) => {
       const c = el.dataset.c, { rows } = orcData(), me = rows.find((r) => r.c.name === c), falta = Math.ceil(me.g - me.lim);
       const folgas = rows.filter((r) => r.c.name !== c && r.lim > 0 && r.lim - r.g >= falta).sort((a, b) => (b.lim - b.g) - (a.lim - a.g));
@@ -1133,7 +1144,7 @@ window.FT_CONFIG = {
   };
   function calcDecisao() { dec.res = E.decidir(S, today(), { necessidade: dec.nec, preco: +dec.preco, forma: dec.forma, parcelas: +dec.parcelas, juros: dec.juros }); dec.step = 5; render(); }
   function sheetMeta(m) {
-    openSheet('<h3>' + (m ? 'Editar meta' : 'Nova meta') + '</h3><label class="f">Nome</label><input class="input" id="mNome" value="' + esc(m ? m.nome : '') + '" placeholder="Ex.: viagem, notebook"><label class="f">Quanto quero juntar</label><input class="input" id="mAlvo" inputmode="decimal" value="' + (m ? String(m.alvo).replace('.', ',') : '') + '"><label class="f">Até quando</label><input class="input" id="mData" type="month" value="' + (m ? m.data : '') + '"><label class="f">Quanto já tenho</label><input class="input" id="mAtual" inputmode="decimal" value="' + (m && m.atual ? String(m.atual).replace('.', ',') : '') + '"><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saveMeta" data-id="' + (m ? m.id : '') + '">Salvar</button>' + (m ? '<button class="btn danger" data-act="delMeta" data-id="' + m.id + '">Excluir</button>' : '') + '</div>');
+    openSheet('<h3>' + (m ? 'Editar meta' : 'Nova meta') + '</h3><label class="f">Nome</label><input class="input" id="mNome" value="' + esc(m ? m.nome : '') + '" placeholder="Ex.: viagem, notebook"><label class="f">Quanto quero juntar</label><input class="input" id="mAlvo" inputmode="numeric" data-mask="money" value="' + (m ? fmtIn(m.alvo) : '') + '"><label class="f">Até quando</label><input class="input" id="mData" type="month" value="' + (m ? m.data : '') + '"><label class="f">Quanto já tenho</label><input class="input" id="mAtual" inputmode="numeric" data-mask="money" value="' + (m && m.atual ? fmtIn(m.atual) : '') + '"><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saveMeta" data-id="' + (m ? m.id : '') + '">Salvar</button>' + (m ? '<button class="btn danger" data-act="delMeta" data-id="' + m.id + '">Excluir</button>' : '') + '</div>');
   }
 
   /* ---------- eventos ---------- */
@@ -1148,6 +1159,8 @@ window.FT_CONFIG = {
     else if (el.dataset.chg === 'catName') { const o = S.cats.find((x) => x.name === c); const n = el.value.trim(); if (o && n && n !== c) { S.tx.forEach((t) => { if (t.cat === c) t.cat = n; }); Object.keys(S.rules).forEach((k) => { if (S.rules[k] === c) S.rules[k] = n; }); if (S.budget[c] != null) { S.budget[n] = S.budget[c]; delete S.budget[c]; } o.name = n; save(); } }
   });
   document.addEventListener('input', (e) => { if (e.target.id === 'qIn') { view.q = e.target.value; const l = $('txlist'); if (l) l.innerHTML = txListHtml(); } });
+  document.addEventListener('input', (e) => { const el = e.target; if (!el.dataset || el.dataset.mask !== 'money') return; el.value = maskMoney(el.value, el.hasAttribute('data-neg')); try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {} });
+  document.addEventListener('focusin', (e) => { const el = e.target; if (el.dataset && el.dataset.mask === 'money') setTimeout(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch (_) {} }, 0); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.closest('#login')) doLoginAct(); });
   $('fileIn').addEventListener('change', (e) => { if (e.target.files.length) handleFiles([...e.target.files]); });
 
