@@ -669,8 +669,8 @@ window.FT_CONFIG = {
     const pend = r2(P.filter(p => p.meses[0] === month).reduce((s, p) => s + p.valor, 0));
     const ass = assinaturasMes(S, month);
     const cts = contasDoMes(S, month);
-    const posso = pl.plano ? r2(pl.plano - st.gasto - pend - ass.pendente - cts.pendente) : null;
-    return { month, ...st, plano: pl, parcelasPendentes: pend, assPend: ass.pendente, assTotal: ass.total, contasPend: cts.pendente, posso };
+    const posso = pl.plano ? r2(pl.plano - st.gasto - pend - cts.pendente) : null;
+    return { month, ...st, plano: pl, parcelasPendentes: pend, assPend: 0, assTotal: ass.total, contasPend: cts.pendente, posso };
   }
 
   /* sugestão de limites após >=2 meses completos: média por categoria */
@@ -906,9 +906,10 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   }
 
   /* ---------- novidades (aparece 1x por atualização) ---------- */
-  const VERSAO = '2026-11-04d';
+  const VERSAO = '2026-11-04e';
   const NOVIDADES = [
     ['Conta corrente', 'Agora você lança receitas e gastos da conta na mão (botão +), sem precisar de extrato. A fatura do cartão continua funcionando, só que opcional.'],
+    ['Assinaturas', 'Agora são só para o seu controle e não descontam do orçamento.'],
     ['Despesas', 'Nova aba para as contas do mês (aluguel, luz, internet...), fixas e variáveis, com saída, vencimento e "pago". O total entra no orçamento; o "pago" é só para você marcar.'],
     ['Transações', 'Gráfico de gastos por categoria antes da lista. Toque numa categoria para filtrar.'],
     ['Resumo', 'Novo card "Para gastar hoje", com quanto sobra por dia e até domingo.'],
@@ -1179,7 +1180,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     const L = (S.assinaturas || []).slice().sort((x, y) => (y.imp || 2) - (x.imp || 2) || (x.dia || 0) - (y.dia || 0));
     const tot = L.reduce((s, i) => s + (+i.valor || 0), 0);
     let h = back() + '<button class="btn" data-act="subNew" style="margin-bottom:12px">Nova assinatura</button>';
-    if (!L.length) return h + '<div class="empty">' + illo('calendar') + 'Adicione suas assinaturas (streaming, apps, planos).<br>Eu considero esse valor no seu planejamento do mês.</div>';
+    if (!L.length) return h + '<div class="empty">' + illo('calendar') + 'Adicione suas assinaturas (streaming, apps, planos).<br>Aqui é só para o seu controle: não entra na conta do orçamento.</div>';
     h += '<div class="card hero"><h2>Assinaturas</h2><div class="big">' + brl(tot) + '</div><p class="muted small">por mês · ' + brl(tot * 12) + ' por ano</p></div>';
     h += '<div class="card" style="padding:4px 16px">' + L.map((i) => '<div class="tx" data-act="subEdit" data-id="' + i.id + '"><div class="ic" style="background:' + catObj('Assinaturas').color + '22;color:' + catObj('Assinaturas').color + '">' + catIc('Assinaturas') + '</div><div class="mid-col"><div class="nm">' + esc(i.nome) + '</div><div class="muted small">' + (i.forma === 'pix' ? 'PIX' : 'Cartão') + ' · todo dia ' + i.dia + ' · ' + '⭐'.repeat(i.imp || 2) + '</div></div><div class="money">' + brl(i.valor) + '<div class="muted small" style="text-align:right;font-weight:400">por mês</div><div class="muted" style="text-align:right;font-weight:400;font-size:12px;opacity:.85;margin-top:1px">' + brl(i.valor * 12) + ' por ano</div></div></div>').join('') + '</div>';
     return h;
