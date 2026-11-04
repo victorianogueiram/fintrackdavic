@@ -239,6 +239,8 @@ label.f { display: block; font-size: 12px; font-weight: 500; color: var(--muted)
 .day-c b { font-weight: 500; font-size: 17px; } .day-c p { margin-top: 2px; }
 .day-v { font-size: 34px; font-weight: 300; letter-spacing: -.02em; white-space: nowrap; }
 
+.chk { flex: none; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--tile-line); display: grid; place-items: center; background: transparent; color: #fff; } .chk svg { width: 16px; height: 16px; } .chk.on { background: var(--accent); border-color: var(--accent); }
+
 </style>
 </head>
 <body>
@@ -507,7 +509,7 @@ window.FT_CONFIG = {
   function newState() {
     return {
       v: 2, cats: JSON.parse(JSON.stringify(DEFAULT_CATS)), rules: {}, tx: [], budget: {}, metas: [], decisoes: [],
-      faturas: [], assinaturas: [], settings: { renda: 0, limitePct: 90, saldoConta: null, saldoData: null, reservaAlvo: 0, reservaAtual: 0, reservaMeses: 6, tema: 'auto' }, dismissed: {}
+      faturas: [], assinaturas: [], contas: [], contasMes: {}, settings: { renda: 0, limitePct: 90, saldoConta: null, saldoData: null, reservaAlvo: 0, reservaAtual: 0, reservaMeses: 6, tema: 'auto' }, dismissed: {}
     };
   }
 
@@ -558,8 +560,8 @@ window.FT_CONFIG = {
   }
   function markSeen(S, id) { (S._seen = S._seen || new Set()).add(id); }
 
-  function addManual(S, { data, nome, valor, cat, conta }) {
-    const t = { id: uid(), data, nome, nomeOrig: nome, valor: -Math.abs(valor), conta: conta || 'cartao', cat: cat || guessCat(S, nome) || 'Outros', origem: 'manual', parcela: null, transfer: false };
+  function addManual(S, { data, nome, valor, cat, conta, receita }) {
+    const t = { id: uid(), data, nome, nomeOrig: nome, valor: receita ? Math.abs(valor) : -Math.abs(valor), conta: receita ? 'cc' : conta || 'cartao', cat: receita ? 'Receita' : cat || guessCat(S, nome) || 'Outros', origem: 'manual', parcela: null, transfer: false };
     S.tx.push(t); return t;
   }
   function learn(S, tx, cat) {
@@ -601,6 +603,22 @@ window.FT_CONFIG = {
     const out = {}; for (let i = 0; i < count; i++) out[addMonths(from, i)] = 0;
     P.forEach(p => p.meses.forEach(m => { if (m in out) out[m] = r2(out[m] + p.valor); }));
     return out;
+  }
+
+  /* ---------- despesas / contas do mês (manuais) ---------- */
+  // cada conta vale a partir do mês em que foi criada; o valor pode ser diferente em cada mês (S.contasMes[mês][id])
+  function contasDoMes(S, month) {
+    const rows = []; let total = 0, pago = 0, pendente = 0;
+    (S.contas || []).forEach(c => {
+      if (c.desde && c.desde > month) return;
+      const o = ((S.contasMes || {})[month] || {})[c.id] || {};
+      const valor = o.valor != null ? +o.valor : +c.valor || 0, ok = !!o.pago;
+      rows.push({ ...c, valor, pago: ok });
+      if (c.saida === 'outra') return; // benefício/auxílio: não sai do seu bolso
+      total += valor; if (ok) pago += valor;
+      pendente += valor; // conta sempre pesa no orçamento; o "pago" é só controle
+    });
+    return { rows, total: r2(total), pago: r2(pago), falta: r2(total - pago), pendente: r2(pendente) };
   }
 
   /* ---------- assinaturas (manuais) ---------- */
@@ -650,8 +668,9 @@ window.FT_CONFIG = {
     // parcelas que ainda vão cair neste mês (série cuja última cobrança foi antes do mês)
     const pend = r2(P.filter(p => p.meses[0] === month).reduce((s, p) => s + p.valor, 0));
     const ass = assinaturasMes(S, month);
-    const posso = pl.plano ? r2(pl.plano - st.gasto - pend - ass.pendente) : null;
-    return { month, ...st, plano: pl, parcelasPendentes: pend, assPend: ass.pendente, assTotal: ass.total, posso };
+    const cts = contasDoMes(S, month);
+    const posso = pl.plano ? r2(pl.plano - st.gasto - pend - ass.pendente - cts.pendente) : null;
+    return { month, ...st, plano: pl, parcelasPendentes: pend, assPend: ass.pendente, assTotal: ass.total, contasPend: cts.pendente, posso };
   }
 
   /* sugestão de limites após >=2 meses completos: média por categoria */
@@ -670,7 +689,7 @@ window.FT_CONFIG = {
     const v = visaoMes(S, today); const renda = S.settings.renda; const teto = renda * S.settings.limitePct / 100;
     if (!renda) return { veredito: 'sem-renda', titulo: 'Informe sua renda', texto: 'Preciso da sua renda mensal (em Mais > Ajustes) para avaliar se cabe.' };
     const P = parcelamentos(S, today);
-    const base = v.gasto + v.parcelasPendentes + v.assPend;
+    const base = v.gasto + v.parcelasPendentes + v.assPend + v.contasPend;
     const opcoes = [];
     opcoes.push({ forma: 'avista', n: 1, mensal: preco, total: preco });
     for (const n of [2, 3, 4, 5, 6, 8, 10, 12]) opcoes.push({ forma: 'parcelado', n, mensal: r2(preco / n), total: preco, semJuros: true });
@@ -746,7 +765,7 @@ window.FT_CONFIG = {
     return out;
   }
 
-  const api = { DEFAULT_CATS, newState, ruleKey, guessCat, importLines, addManual, learn, monthStats, assinaturasMes, monthsWithData, parcelamentos, compromissosPorMes, recorrentes, planoMes, visaoMes, sugerirLimites, decidir, reserva, metaMensal, metaStatus, alertas, isExpense, isIncome, addMonths, monthLabel, ym, r2, uid };
+  const api = { DEFAULT_CATS, newState, ruleKey, guessCat, importLines, addManual, learn, monthStats, assinaturasMes, contasDoMes, monthsWithData, parcelamentos, compromissosPorMes, recorrentes, planoMes, visaoMes, sugerirLimites, decidir, reserva, metaMensal, metaStatus, alertas, isExpense, isIncome, addMonths, monthLabel, ym, r2, uid };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FTEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
 
@@ -805,7 +824,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const brl = (n) => (n < 0 ? '-' : '') + 'R$ ' + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const brl0 = (n) => 'R$ ' + Math.round(n).toLocaleString('pt-BR');
+  const brl0 = (n) => 'R$ ' + (Math.round(n) || 0).toLocaleString('pt-BR');
   const pad = (n) => String(n).padStart(2, '0');
   const today = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
   const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
@@ -843,9 +862,9 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     const base = E.newState();
     const o = Object.assign(base, d || {});
     o.settings = Object.assign(base.settings, (d && d.settings) || {});
-    ['cats', 'tx', 'metas', 'decisoes', 'faturas', 'assinaturas'].forEach((k) => { if (!Array.isArray(o[k])) o[k] = base[k]; });
+    ['cats', 'tx', 'metas', 'decisoes', 'faturas', 'assinaturas', 'contas'].forEach((k) => { if (!Array.isArray(o[k])) o[k] = base[k]; });
     E.DEFAULT_CATS.filter((c) => ['Impostos', 'A conferir'].includes(c.name)).forEach((c) => { if (!o.cats.some((x) => x.name === c.name)) o.cats.push({ id: E.uid(), name: c.name, color: c.color }); });
-    ['rules', 'budget', 'dismissed'].forEach((k) => { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; });
+    ['rules', 'budget', 'dismissed', 'contasMes'].forEach((k) => { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; });
     o.metas.forEach((m) => { if (!m.inicio) m.inicio = today(); if (m.atual0 == null) m.atual0 = +m.atual || 0; });
     return o;
   }
@@ -887,8 +906,10 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   }
 
   /* ---------- novidades (aparece 1x por atualização) ---------- */
-  const VERSAO = '2026-11-04';
+  const VERSAO = '2026-11-04d';
   const NOVIDADES = [
+    ['Conta corrente', 'Agora você lança receitas e gastos da conta na mão (botão +), sem precisar de extrato. A fatura do cartão continua funcionando, só que opcional.'],
+    ['Despesas', 'Nova aba para as contas do mês (aluguel, luz, internet...), fixas e variáveis, com saída, vencimento e "pago". O total entra no orçamento; o "pago" é só para você marcar.'],
     ['Transações', 'Gráfico de gastos por categoria antes da lista. Toque numa categoria para filtrar.'],
     ['Resumo', 'Novo card "Para gastar hoje", com quanto sobra por dia e até domingo.'],
     ['Assinaturas', 'Cadastro manual com cartão ou PIX, dia da cobrança, importância de 1 a 3 estrelas e valor por ano.'],
@@ -945,8 +966,8 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   }
 
   /* ---------- renderização ---------- */
-  const TABS = [['resumo', 'Resumo'], ['orcamento', 'Orçamento'], ['transacoes', 'Transações'], ['decidir', 'Decidir'], ['parcelas', 'Parcelas'], ['recorrentes', 'Assinaturas'], ['metas', 'Metas']];
-  const TITLES = { resumo: 'Visão geral', orcamento: 'Orçamento', transacoes: 'Transações', decidir: 'Decidir', parcelas: 'Parcelamentos', recorrentes: 'Assinaturas', metas: 'Metas', reserva: 'Reserva', ajustes: 'Ajustes' };
+  const TABS = [['resumo', 'Resumo'], ['orcamento', 'Orçamento'], ['transacoes', 'Transações'], ['despesas', 'Despesas'], ['decidir', 'Decidir'], ['parcelas', 'Parcelas'], ['recorrentes', 'Assinaturas'], ['metas', 'Metas']];
+  const TITLES = { resumo: 'Visão geral', orcamento: 'Orçamento', transacoes: 'Transações', despesas: 'Despesas', decidir: 'Decidir', parcelas: 'Parcelamentos', recorrentes: 'Assinaturas', metas: 'Metas', reserva: 'Reserva', ajustes: 'Ajustes' };
   const isDark = () => { const t = S.settings.tema; return t === 'dark' || (t !== 'light' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches); };
   function render() {
     if ($('app').hidden) return;
@@ -957,7 +978,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     document.querySelector('[data-act=menu]').innerHTML = ic('menu');
     $('themeBtn').innerHTML = ic(isDark() ? 'sun' : 'moon');
     $('fab').hidden = !['resumo', 'transacoes', 'orcamento'].includes(view.name) || view.selMode;
-    const fn = { resumo: vResumo, orcamento: vOrcamento, transacoes: vTransacoes, decidir: vDecidir, parcelas: vParcelas, recorrentes: vRecorrentes, metas: vMetas, reserva: vReserva, ajustes: vAjustes }[view.name];
+    const fn = { resumo: vResumo, orcamento: vOrcamento, transacoes: vTransacoes, despesas: vDespesas, decidir: vDecidir, parcelas: vParcelas, recorrentes: vRecorrentes, metas: vMetas, reserva: vReserva, ajustes: vAjustes }[view.name];
     $('view').innerHTML = fn();
     renderSelbar();
     const on = tabs.querySelector('.ptab.on'); if (on) tabs.scrollLeft = on.offsetLeft - (tabs.clientWidth - on.offsetWidth) / 2;
@@ -981,14 +1002,14 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   }
   function vResumo() {
     const m = currentMonth(), ref = refDate(); const v = E.visaoMes(S, ref); const al = E.alertas(S, today());
-    if (!S.tx.length) return '<div class="card hero">' + illo('coins') + '<h2>Vamos começar</h2><p class="muted small" style="margin-bottom:14px">Informe o que você tem na conta e lance seus gastos do dia a dia. Quando quiser, envie o extrato ou a fatura para eu preencher o resto.</p><div class="stack"><button class="btn" data-act="saldoEdit">O que tenho na conta</button><button class="btn ghost" data-act="newExpense">Lançar gasto</button><button class="btn ghost" data-act="pickFile">Enviar extrato ou fatura</button></div></div>' + (S.settings.saldoConta != null ? saldoCard() : '') + (S.settings.renda ? '' : '<div class="card"><h2>Renda mensal</h2><p class="muted small" style="margin-bottom:10px">Com a renda eu calculo quanto você ainda pode gastar no mês.</p><button class="btn small" data-act="rendaEdit">Informar renda</button></div>');
+    if (!S.tx.length && !S.contas.length && !S.assinaturas.length && !S.settings.renda) return '<div class="card hero">' + illo('coins') + '<h2>Vamos começar</h2><p class="muted small" style="margin-bottom:14px">Informe o que você tem na conta e lance suas receitas e gastos quando quiser. A fatura do cartão é opcional, envie se e quando preferir.</p><div class="stack"><button class="btn" data-act="saldoEdit">O que tenho na conta</button><button class="btn ghost" data-act="newExpense">Lançar gasto</button><button class="btn ghost" data-act="newIncome">Lançar receita</button><button class="btn ghost" data-act="pickFile">Enviar fatura do cartão</button></div></div>' + (S.settings.saldoConta != null ? saldoCard() : '') + (S.settings.renda ? '' : '<div class="card"><h2>Renda mensal</h2><p class="muted small" style="margin-bottom:10px">Com a renda eu calculo quanto você ainda pode gastar no mês.</p><button class="btn small" data-act="rendaEdit">Informar renda</button></div>');
     let h = monthNav();
     if (v.posso == null) {
       h += '<div class="card hero"><h2>Quanto posso gastar</h2><p class="muted" style="margin-bottom:12px">Informe sua renda para eu calcular quanto ainda pode gastar no mês.</p><button class="btn small" data-act="goAjustes">Informar renda</button></div>';
     } else {
-      const usado = v.gasto + v.parcelasPendentes + v.assPend, pct = v.plano.plano ? usado / v.plano.plano * 100 : 0, cls = pct > 100 ? 'bad' : pct > 85 ? 'warn' : 'ok';
+      const usado = v.gasto + v.parcelasPendentes + v.assPend + v.contasPend, pct = v.plano.plano ? usado / v.plano.plano * 100 : 0, cls = pct > 100 ? 'bad' : pct > 85 ? 'warn' : 'ok';
       const dias = m === E.ym(today()) ? Math.max(1, new Date(+m.slice(0, 4), +m.slice(5), 0).getDate() - new Date().getDate() + 1) : null;
-      h += '<div class="card hero"><div class="row between small muted"><span>Quanto posso gastar no mês</span><span>' + brl0(v.plano.plano) + '</span></div><div style="margin:8px 0 14px">' + bigMoney(v.posso) + ' <span class="muted">' + (v.posso < 0 ? 'acima do plano' : 'livres') + '</span></div><div class="bar ' + cls + '"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:10px"><span>Gastou ' + brl0(v.gasto) + (v.parcelasPendentes ? ' + ' + brl0(v.parcelasPendentes) + ' em parcelas' : '') + (v.assPend ? ' + ' + brl0(v.assPend) + ' em assinaturas' : '') + '</span><span>' + Math.round(pct) + '%</span></div>' +
+      h += '<div class="card hero"><div class="row between small muted"><span>Quanto posso gastar no mês</span><span>' + brl0(v.plano.plano) + '</span></div><div style="margin:8px 0 14px">' + bigMoney(v.posso) + ' <span class="muted">' + (v.posso < 0 ? 'acima do plano' : 'livres') + '</span></div><div class="bar ' + cls + '"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:10px"><span>Gastou ' + brl0(v.gasto) + (v.parcelasPendentes ? ' + ' + brl0(v.parcelasPendentes) + ' em parcelas' : '') + (v.assPend ? ' + ' + brl0(v.assPend) + ' em assinaturas' : '') + (v.contasPend ? ' + ' + brl0(v.contasPend) + ' em despesas' : '') + '</span><span>' + Math.round(pct) + '%</span></div>' +
         '</div>';
     }
     h += diaCard(v);
@@ -1029,8 +1050,8 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     if (v.posso == null) {
       h += '<div class="card hero"><h2>Plano do mês</h2><p class="muted" style="margin-bottom:12px">Informe sua renda mensal para eu montar o plano e mostrar quanto está livre.</p><div class="row"><input class="input" id="rendaIn" inputmode="numeric" data-mask="money" placeholder="R$ 0,00"><button class="btn small" data-act="saveRenda">Salvar</button></div></div>';
     } else {
-      const usado = v.gasto + v.parcelasPendentes + v.assPend, pct = v.plano.plano ? usado / v.plano.plano * 100 : 0, cls = pct > 100 ? 'bad' : pct > 85 ? 'warn' : 'ok';
-      h += '<div class="card hero"><div class="row between small muted"><span>Plano de ' + esc(nomeMes) + '</span><span>' + brl0(v.plano.plano) + '</span></div><div style="margin:8px 0 14px">' + bigMoney(v.posso) + ' <span class="muted">' + (v.posso < 0 ? 'acima do plano' : 'livres') + '</span></div><div class="bar ' + cls + '"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:8px"><span>Gastou ' + brl0(v.gasto) + (v.parcelasPendentes ? ' + ' + brl0(v.parcelasPendentes) + ' em parcelas a cair' : '') + (v.assPend ? ' + ' + brl0(v.assPend) + ' em assinaturas' : '') + '</span><span>' + Math.round(pct) + '%</span></div></div>';
+      const usado = v.gasto + v.parcelasPendentes + v.assPend + v.contasPend, pct = v.plano.plano ? usado / v.plano.plano * 100 : 0, cls = pct > 100 ? 'bad' : pct > 85 ? 'warn' : 'ok';
+      h += '<div class="card hero"><div class="row between small muted"><span>Plano de ' + esc(nomeMes) + '</span><span>' + brl0(v.plano.plano) + '</span></div><div style="margin:8px 0 14px">' + bigMoney(v.posso) + ' <span class="muted">' + (v.posso < 0 ? 'acima do plano' : 'livres') + '</span></div><div class="bar ' + cls + '"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:8px"><span>Gastou ' + brl0(v.gasto) + (v.parcelasPendentes ? ' + ' + brl0(v.parcelasPendentes) + ' em parcelas a cair' : '') + (v.assPend ? ' + ' + brl0(v.assPend) + ' em assinaturas' : '') + (v.contasPend ? ' + ' + brl0(v.contasPend) + ' em despesas' : '') + '</span><span>' + Math.round(pct) + '%</span></div></div>';
     }
     const over = rows.filter((r) => r.lim > 0 && r.g > r.lim).sort((a, b) => (b.g - b.lim) - (a.g - a.lim))[0];
     if (over) h += '<div class="alert"><span class="ai">' + ic('alert') + '</span><b>' + esc(over.c.name) + ' passou ' + brl0(over.g - over.lim) + '</b><button class="btn small dark" data-act="orcFix" data-c="' + esc(over.c.name) + '">O que fazer?</button></div>';
@@ -1135,7 +1156,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
       h += '<div class="card"><p class="muted small" style="margin-bottom:8px">Próximo passo</p><p class="next-t">' + esc(proximo) + '</p></div>';
       h += '<span class="ul-l">Mudar a compra</span><div class="pills" style="margin:10px 0 18px">' + [['preciso', 'Preciso mesmo'], ['quero', 'Quero muito'], ['impulso', 'Impulso']].map(([k, l]) => '<button class="pill' + (d.nec === k ? ' on' : '') + '" data-act="dNecRe" data-v="' + k + '">' + l + '</button>').join('') + '</div>';
       h += '<button class="ul-l" data-act="dHow">Como cheguei nisso</button>';
-      if (d.how) h += '<div class="card" style="margin-top:10px"><div class="stack"><div class="row between"><span class="muted">Gasto do mês + parcelas + assinaturas</span><b>' + brl(r.base) + '</b></div>' + (r.usouJurosEstimado ? '<div class="row between"><span class="muted">Total estimado c/ juros</span><b>' + brl(r.escolha.total) + '</b></div>' : '') + '<div class="row between"><span class="muted">Com essa compra</span><b>' + brl(r.projetado) + '</b></div><div class="row between"><span class="muted">Seu limite do mês</span><b>' + brl(r.teto) + '</b></div><div class="row between"><span class="muted">Sobra</span><b class="' + (r.sobra < 0 ? 'orange' : 'pos') + '">' + brl(r.sobra) + '</b></div></div></div>';
+      if (d.how) h += '<div class="card" style="margin-top:10px"><div class="stack"><div class="row between"><span class="muted">Gasto do mês + parcelas + assinaturas + despesas</span><b>' + brl(r.base) + '</b></div>' + (r.usouJurosEstimado ? '<div class="row between"><span class="muted">Total estimado c/ juros</span><b>' + brl(r.escolha.total) + '</b></div>' : '') + '<div class="row between"><span class="muted">Com essa compra</span><b>' + brl(r.projetado) + '</b></div><div class="row between"><span class="muted">Seu limite do mês</span><b>' + brl(r.teto) + '</b></div><div class="row between"><span class="muted">Sobra</span><b class="' + (r.sobra < 0 ? 'orange' : 'pos') + '">' + brl(r.sobra) + '</b></div></div></div>';
       h += '<div class="stack" style="margin-top:18px"><button class="btn dark" data-act="dMeta">' + ic('target') + '<span>Virar meta</span></button><div class="pills" style="justify-content:center"><button class="pill" data-act="dSave" data-v="comprei">Vou comprar</button><button class="pill" data-act="dSave" data-v="amanha">Decidir amanhã</button><button class="pill" data-act="dSave" data-v="desisti">Desisti</button></div><button class="btn conferir" data-act="dReset">Voltar ao Decidir</button></div>';
     }
     if (d.step > 0 && d.step < 5) h += '<p style="text-align:center;margin:6px 0"><button class="link" data-act="dBack">Voltar</button></p>';
@@ -1161,6 +1182,20 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     if (!L.length) return h + '<div class="empty">' + illo('calendar') + 'Adicione suas assinaturas (streaming, apps, planos).<br>Eu considero esse valor no seu planejamento do mês.</div>';
     h += '<div class="card hero"><h2>Assinaturas</h2><div class="big">' + brl(tot) + '</div><p class="muted small">por mês · ' + brl(tot * 12) + ' por ano</p></div>';
     h += '<div class="card" style="padding:4px 16px">' + L.map((i) => '<div class="tx" data-act="subEdit" data-id="' + i.id + '"><div class="ic" style="background:' + catObj('Assinaturas').color + '22;color:' + catObj('Assinaturas').color + '">' + catIc('Assinaturas') + '</div><div class="mid-col"><div class="nm">' + esc(i.nome) + '</div><div class="muted small">' + (i.forma === 'pix' ? 'PIX' : 'Cartão') + ' · todo dia ' + i.dia + ' · ' + '⭐'.repeat(i.imp || 2) + '</div></div><div class="money">' + brl(i.valor) + '<div class="muted small" style="text-align:right;font-weight:400">por mês</div><div class="muted" style="text-align:right;font-weight:400;font-size:12px;opacity:.85;margin-top:1px">' + brl(i.valor * 12) + ' por ano</div></div></div>').join('') + '</div>';
+    return h;
+  }
+  const SAIDAS = { cc: 'Conta corrente', cartao: 'Cartão de crédito', outra: 'Outra fonte' };
+  function vDespesas() {
+    const m = currentMonth(), cm = E.contasDoMes(S, m), nomeMes = E.monthLabel(m).split(' de ')[0];
+    let h = monthNav() + '<button class="btn" data-act="ctNew" style="margin-bottom:12px">Nova despesa</button>';
+    if (!cm.rows.length) return h + '<div class="empty">' + illo('calendar') + 'Cadastre suas contas do mês: aluguel, luz, internet, mensalidades.<br>Eu desconto esse valor do que sobra no orçamento.</div>';
+    const pct = cm.total ? cm.pago / cm.total * 100 : 0;
+    h += '<div class="card hero"><div class="row between small muted"><span>Despesas de ' + esc(nomeMes) + '</span><span>' + Math.round(pct) + '% pago</span></div><div style="margin:8px 0 12px">' + bigMoney(cm.total) + '</div><div class="bar ok"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:10px"><span>Pago ' + brl0(cm.pago) + '</span><span>Falta pagar ' + brl0(cm.falta) + '</span></div></div>';
+    [['fixa', 'Despesas fixas'], ['variavel', 'Despesas variáveis']].forEach(([tp, titulo]) => {
+      const L = cm.rows.filter((r) => (r.tipo || 'fixa') === tp).sort((x, y) => (x.dia || 99) - (y.dia || 99) || y.valor - x.valor); if (!L.length) return;
+      const sub = L.filter((r) => r.saida !== 'outra').reduce((s, r) => s + r.valor, 0);
+      h += '<div class="row between" style="margin:14px 2px 8px"><b>' + titulo + '</b><span class="muted small">' + brl0(sub) + '</span></div><div class="card" style="padding:4px 16px">' + L.map((r) => '<div class="tx"><button class="chk' + (r.pago ? ' on' : '') + '" data-act="ctPago" data-id="' + r.id + '" aria-label="Marcar como pago">' + (r.pago ? ic('check') : '') + '</button><div class="mid-col" data-act="ctEdit" data-id="' + r.id + '"><div class="nm"' + (r.pago ? ' style="opacity:.6"' : '') + '>' + esc(r.nome) + '</div><div class="muted small">' + SAIDAS[r.saida || 'cc'] + (r.dia ? ' · dia ' + r.dia : '') + '</div></div><div class="money" data-act="ctEdit" data-id="' + r.id + '">' + brl(r.valor) + '</div></div>').join('') + '</div>';
+    });
     return h;
   }
   const ring = (pct, size, sw, col) => { const r = (size - sw) / 2, c = 2 * Math.PI * r, p = Math.min(100, Math.max(0, pct)); return '<svg class="rg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="' + sw + '"/><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="' + (col || 'var(--accent)') + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + (c * p / 100).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/></svg>'; };
@@ -1209,7 +1244,11 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
 
   function sheetPlus() {
     const o = (act, icn, t, d) => '<button class="opt row-opt" data-act="' + act + '"><span class="ti">' + ic(icn) + '</span><span><b>' + t + '</b><span class="sub">' + d + '</span></span></button>';
-    openSheet(sheetHead('Adicionar', null) + o('newExpense', 'receipt', 'Lançar gasto', 'Registre um gasto do dia a dia em segundos') + o('saldoEdit', 'wallet', 'O que tenho na conta', 'Informe o saldo atual da conta corrente') + o('pickFile', 'file-arrow-up', 'Extrato ou fatura', 'Excel, CSV, OFX ou PDF da conta e do cartão Itaú'));
+    openSheet(sheetHead('Adicionar', null) + o('newExpense', 'receipt', 'Lançar gasto', 'Registre um gasto da conta ou do cartão em segundos') + o('newIncome', 'coins', 'Lançar receita', 'Salário, Pix recebido, entradas na conta corrente') + o('saldoEdit', 'wallet', 'O que tenho na conta', 'Informe o saldo atual da conta corrente') + o('pickFile', 'file-arrow-up', 'Fatura do cartão', 'Opcional: Excel, CSV, OFX ou PDF da fatura (ou extrato)'));
+  }
+  function sheetIncome() {
+    openSheet(sheetHead('Nova receita', 'plus') + '<div class="item-card"><span class="il">Quanto entrou?</span><input class="bare big-in" id="iVal" inputmode="numeric" data-mask="money" placeholder="R$ 0,00"><input class="bare nm-in" id="iNome" placeholder="Descrição, ex.: salário, Pix da Bia"><div class="pills"><span class="pill on" style="pointer-events:none">Conta corrente</span><input class="pill dt" id="iData" type="date" value="' + today() + '"></div></div><div style="height:16px"></div><button class="btn" data-act="saveIncome">Lançar receita</button>');
+    setTimeout(() => { const i = $('iVal'); if (i) i.focus(); }, 250);
   }
   let expCat = '', expConta = 'cartao';
   function sheetExpense() {
@@ -1281,12 +1320,13 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   /* ---------- ações ---------- */
   const A = {
     go: (el) => { closeSheet(); view.name = el.dataset.v; view.selMode = false; view.sel.clear(); render(); window.scrollTo(0, 0); },
-    menu: () => openSheet('<p class="muted small">Conectada como <b>' + esc(nick) + '</b></p><h3 class="serif" style="font-size:30px">Menu</h3><div class="card" style="padding:4px 16px;margin-top:12px">' + [['resumo', 'Visão geral'], ['orcamento', 'Orçamento'], ['transacoes', 'Transações'], ['decidir', 'Decidir'], ['parcelas', 'Parcelamentos'], ['recorrentes', 'Assinaturas'], ['metas', 'Metas'], ['reserva', 'Reserva de emergência'], ['ajustes', 'Ajustes']].map(([k, l]) => '<button class="menu-item" data-act="go" data-v="' + k + '"><b>' + l + '</b><span class="muted">›</span></button>').join('') + '<button class="menu-item" data-act="novidades"><b>O que tem de novo</b><span class="muted">›</span></button><button class="menu-item" data-act="logout"><b>Sair</b><span class="muted">›</span></button></div>'),
+    menu: () => openSheet('<p class="muted small">Conectada como <b>' + esc(nick) + '</b></p><h3 class="serif" style="font-size:30px">Menu</h3><div class="card" style="padding:4px 16px;margin-top:12px">' + [['resumo', 'Visão geral'], ['orcamento', 'Orçamento'], ['transacoes', 'Transações'], ['despesas', 'Despesas'], ['decidir', 'Decidir'], ['parcelas', 'Parcelamentos'], ['recorrentes', 'Assinaturas'], ['metas', 'Metas'], ['reserva', 'Reserva de emergência'], ['ajustes', 'Ajustes']].map(([k, l]) => '<button class="menu-item" data-act="go" data-v="' + k + '"><b>' + l + '</b><span class="muted">›</span></button>').join('') + '<button class="menu-item" data-act="novidades"><b>O que tem de novo</b><span class="muted">›</span></button><button class="menu-item" data-act="logout"><b>Sair</b><span class="muted">›</span></button></div>'),
     toggleTheme: () => { S.settings.tema = isDark() ? 'light' : 'dark'; applyTheme(); save(); render(); },
     mnow: () => { view.month = null; render(); },
     plus: sheetPlus, closeSheet,
     pickFile: () => { closeSheet(); $('fileIn').value = ''; $('fileIn').click(); },
-    newExpense: sheetExpense,
+    newExpense: sheetExpense, newIncome: sheetIncome,
+    saveIncome: () => { const v = parseBR($('iVal').value), nome = $('iNome').value.trim() || 'Receita'; if (!(v > 0)) return toastMsg('Informe o valor.'); E.addManual(S, { data: $('iData').value || today(), nome, valor: v, receita: true }); save(); closeSheet(); view.month = null; render(); toastMsg('Receita lançada'); },
     eCat: (el) => { expCat = el.dataset.c; $('eCats').innerHTML = catChips(expCat, 'eCat'); },
     eConta: (el) => { expConta = el.dataset.v; [...$('eConta').children].forEach((b) => b.classList.toggle('on', b.dataset.v === expConta)); },
     saveExpense: () => {
@@ -1326,6 +1366,18 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     saveAjustes: () => { const r = parseBR($('aRenda').value); S.settings.renda = isNaN(r) ? 0 : r; S.settings.limitePct = Math.min(100, Math.max(30, parseInt($('aLim').value, 10) || 90)); save(); render(); toastMsg('Ajustes salvos'); },
     tema: (el) => { S.settings.tema = el.dataset.v; applyTheme(); save(); render(); },
     saveReserva: () => { const a = parseBR($('resAlvo').value), t = parseBR($('resAtual').value); S.settings.reservaAlvo = isNaN(a) ? 0 : a; S.settings.reservaAtual = isNaN(t) ? 0 : t; save(); render(); toastMsg('Reserva salva'); },
+    ctNew: () => sheetConta(null), ctEdit: (el) => sheetConta((S.contas || []).find((c) => c.id === el.dataset.id)),
+    ctTipo: (el) => { ctTipo = el.dataset.v; [...$('ctTipos').children].forEach((b) => b.classList.toggle('on', b.dataset.v === ctTipo)); },
+    ctSaida: (el) => { ctSaida = el.dataset.v; [...$('ctSaidas').children].forEach((b) => b.classList.toggle('on', b.dataset.v === ctSaida)); },
+    ctPago: (el) => { const m = currentMonth(); S.contasMes[m] = S.contasMes[m] || {}; const o = S.contasMes[m][el.dataset.id] = S.contasMes[m][el.dataset.id] || {}; o.pago = !o.pago; save(); render(); },
+    saveConta: (el) => {
+      const nome = $('cNome').value.trim(), valor = parseBR($('cVal').value), dia = Math.min(31, Math.max(0, parseInt($('cDia').value, 10) || 0)), m = currentMonth(); if (!nome || !(valor > 0)) return toastMsg('Preencha nome e valor.');
+      S.contas = S.contas || []; let id = el.dataset.id;
+      if (id) { Object.assign(S.contas.find((c) => c.id === id), { nome, tipo: ctTipo, saida: ctSaida, dia, valor: ctTipo === 'variavel' ? valor : valor }); } else { id = E.uid(); S.contas.push({ id, nome, valor, tipo: ctTipo, saida: ctSaida, dia, desde: m }); }
+      if (ctTipo === 'variavel') { S.contasMes[m] = S.contasMes[m] || {}; (S.contasMes[m][id] = S.contasMes[m][id] || {}).valor = valor; } else if (S.contasMes[m] && S.contasMes[m][id]) delete S.contasMes[m][id].valor;
+      save(); closeSheet(); render();
+    },
+    delConta: (el) => { S.contas = (S.contas || []).filter((c) => c.id !== el.dataset.id); Object.values(S.contasMes || {}).forEach((o) => delete o[el.dataset.id]); save(); closeSheet(); render(); },
     subNew: () => sheetSub(null), subEdit: (el) => sheetSub((S.assinaturas || []).find((s) => s.id === el.dataset.id)),
     subForma: (el) => { subForma = el.dataset.v; [...$('subFormas').children].forEach((b) => b.classList.toggle('on', b.dataset.v === subForma)); },
     subImp: (el) => { subImp = +el.dataset.v; [...$('subImps').children].forEach((b) => b.classList.toggle('on', +b.dataset.v === subImp)); },
@@ -1397,6 +1449,14 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     toggleLogin: () => { loginMode = loginMode === 'login' ? 'register' : 'login'; showLogin(); }, doLogin: doLoginAct
   };
   function calcDecisao() { dec.res = E.decidir(S, today(), { necessidade: dec.nec, preco: +dec.preco, forma: dec.forma, parcelas: +dec.parcelas, juros: dec.juros }); dec.step = 5; render(); }
+  let ctTipo = 'fixa', ctSaida = 'cc';
+  function sheetConta(c) {
+    ctTipo = c ? c.tipo || 'fixa' : 'fixa'; ctSaida = c ? c.saida || 'cc' : 'cc';
+    const m = currentMonth(), ov = c ? (((S.contasMes || {})[m] || {})[c.id] || {}) : {}, val = c ? (ov.valor != null ? ov.valor : c.valor) : '';
+    const pills = (id, act, opts, sel) => '<div class="pills" id="' + id + '">' + opts.map(([k, l]) => '<button class="pill' + (sel === k ? ' on' : '') + '" data-act="' + act + '" data-v="' + k + '">' + l + '</button>').join('') + '</div>';
+    openSheet(sheetHead(c ? 'Editar despesa' : 'Nova despesa') + '<div class="item-card"><span class="il">Valor</span><input class="bare big-in" id="cVal" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + (val !== '' ? fmtIn(val) : '') + '"><input class="bare nm-in" id="cNome" placeholder="Nome, ex.: Aluguel, Internet" value="' + esc(c ? c.nome : '') + '"><span class="il" style="display:block;margin-top:12px">Tipo</span>' + pills('ctTipos', 'ctTipo', [['fixa', 'Fixa'], ['variavel', 'Variável']], ctTipo) + '<span class="il" style="display:block;margin-top:12px">Saída</span>' + pills('ctSaidas', 'ctSaida', [['cc', 'Conta corrente'], ['cartao', 'Cartão'], ['outra', 'Outra fonte']], ctSaida) + '<p class="muted small" style="margin-top:6px">"Outra fonte" (ex.: auxílio home office) não pesa no seu orçamento.</p><span class="il" style="display:block;margin-top:12px">Dia do vencimento (opcional)</span><input class="bare nm-in" id="cDia" inputmode="numeric" maxlength="2" placeholder="Ex.: 10" value="' + (c && c.dia ? c.dia : '') + '"></div>' +
+      '<p class="muted small" style="margin:10px 4px 0">Variável: o valor vale só para ' + esc(E.monthLabel(m)) + '. Fixa: vale para todos os meses.</p><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saveConta" data-id="' + (c ? c.id : '') + '">Salvar</button>' + (c ? '<button class="btn danger" data-act="delConta" data-id="' + c.id + '">Excluir</button>' : '') + '</div>');
+  }
   let subForma = 'cartao', subImp = 2;
   function sheetSub(s) {
     subForma = s ? s.forma || 'cartao' : 'cartao'; subImp = s ? s.imp || 2 : 2;
