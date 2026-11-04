@@ -226,6 +226,19 @@ label.f { display: block; font-size: 12px; font-weight: 500; color: var(--muted)
 .img-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 99px; background: rgba(255,255,255,.85); color: #241b1e; cursor: pointer; font-size: 14px; } .img-btn svg { width: 16px; height: 16px; }
 .img-x { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.85); color: #241b1e; display: grid; place-items: center; } .img-x svg { width: 16px; height: 16px; }
 
+/* Transações: gráfico por categoria */
+.cchart { padding: 18px 18px 14px; margin: 12px 0; }
+.cc-row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 11px 0; border-top: 1px solid var(--line); border-radius: 0; }
+.cc-row.on { background: var(--soft); margin: 0 -10px; padding: 11px 10px; border-radius: 14px; border-color: transparent; }
+.cc-ic { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #fff; } .cc-ic svg { width: 20px; height: 20px; }
+.cc-b { flex: 1; min-width: 0; } .cc-t { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; } .cc-t b { font-weight: 500; font-size: 16px; }
+.cc-bar { display: block; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; } .cc-bar i { display: block; height: 100%; border-radius: 99px; }
+.cc-tot { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 14px; } .cc-tot b { font-size: 26px; font-weight: 400; }
+
+.day-c { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; }
+.day-c b { font-weight: 500; font-size: 17px; } .day-c p { margin-top: 2px; }
+.day-v { font-size: 34px; font-weight: 300; letter-spacing: -.02em; white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -873,6 +886,25 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     nick = null; S = E.newState(); loginMode = 'login'; showLogin(silent ? 'Sua sessão expirou, entre de novo.' : '');
   }
 
+  /* ---------- novidades (aparece 1x por atualização) ---------- */
+  const VERSAO = '2026-11-04';
+  const NOVIDADES = [
+    ['Transações', 'Gráfico de gastos por categoria antes da lista. Toque numa categoria para filtrar.'],
+    ['Resumo', 'Novo card "Para gastar hoje", com quanto sobra por dia e até domingo.'],
+    ['Assinaturas', 'Cadastro manual com cartão ou PIX, dia da cobrança, importância de 1 a 3 estrelas e valor por ano.'],
+    ['Decidir', 'Resultado novo, com "Mudar a compra" e "Virar meta". Decisões para amanhã viram a fila "Para decidir hoje".'],
+    ['Metas', 'Imagem em cada meta e status de ritmo (no ritmo, atrasada) pelo valor guardado e pelo prazo.'],
+    ['Categorias', 'Telas de conferência e novo gasto com quadradinhos e ícones suaves.']
+  ];
+  function novidadesHtml() { return sheetHead('O que tem de novo', null) + '<p class="muted small" style="margin:2px 0 12px">Atualização de ' + VERSAO.split('-').reverse().join('/') + '</p><div class="card" style="padding:4px 16px">' + NOVIDADES.map(([t, d]) => '<div style="padding:12px 0;border-bottom:1px solid var(--line)"><b>' + esc(t) + '</b><p class="muted small" style="margin-top:2px">' + esc(d) + '</p></div>').join('') + '</div><div style="height:14px"></div><button class="btn" data-act="closeSheet">Entendi</button>'; }
+  function showNovidades() {
+    const k = 'ft2_ver', seen = Cloud.LS.get(k);
+    if (seen === VERSAO) return false;
+    Cloud.LS.set(k, VERSAO);
+    if (!seen && !S.tx.length && !S.metas.length) return false; // primeiro acesso de verdade
+    openSheet(novidadesHtml()); return true;
+  }
+
   /* ---------- boot ---------- */
   async function boot() {
     if (!Cloud.token()) return showLogin();
@@ -883,7 +915,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
       if (dirty) await pushNow();
       else if (r && r.data && r.data.v) { S = normalize(r.data); persistLocal(); setSync('ok'); }
       else setSync('ok');
-      render(); maybeAsk(false);
+      render(); if (!showNovidades()) maybeAsk(false);
     } catch (e) {
       if (e.invalidSession) { await doLogout(true); } else setSync('off');
     }
@@ -938,6 +970,15 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   };
 
   /* ----- Resumo ----- */
+  function diaCard(v) {
+    if (v.posso == null || v.month !== E.ym(today())) return '';
+    const now = new Date(), fim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(), dias = Math.max(1, fim - now.getDate() + 1);
+    const hoje = today(), gHoje = S.tx.filter((t) => t.data === hoje && E.isExpense(t)).reduce((s, t) => s - t.valor, 0);
+    const porDia = Math.max(0, (v.posso + gHoje) / dias), resta = Math.max(0, porDia - gHoje);
+    const dow = now.getDay(), dDom = Math.min(dias, dow === 0 ? 1 : 8 - dow), semana = Math.max(0, porDia * dDom - gHoje);
+    const sub = v.posso <= 0 ? 'Você já usou o plano do mês' : dDom > 1 ? 'Até domingo restam ' + brl0(semana) + ' · média de ' + brl0(porDia) + ' por dia' : 'Hoje é o último dia da semana · média de ' + brl0(porDia) + ' por dia';
+    return '<div class="card day-c"><div><b>Para gastar hoje</b><p class="muted small">' + esc(sub) + '</p></div><div class="day-v">' + brl0(v.posso <= 0 ? 0 : resta) + '</div></div>';
+  }
   function vResumo() {
     const m = currentMonth(), ref = refDate(); const v = E.visaoMes(S, ref); const al = E.alertas(S, today());
     if (!S.tx.length) return '<div class="card hero">' + illo('coins') + '<h2>Vamos começar</h2><p class="muted small" style="margin-bottom:14px">Informe o que você tem na conta e lance seus gastos do dia a dia. Quando quiser, envie o extrato ou a fatura para eu preencher o resto.</p><div class="stack"><button class="btn" data-act="saldoEdit">O que tenho na conta</button><button class="btn ghost" data-act="newExpense">Lançar gasto</button><button class="btn ghost" data-act="pickFile">Enviar extrato ou fatura</button></div></div>' + (S.settings.saldoConta != null ? saldoCard() : '') + (S.settings.renda ? '' : '<div class="card"><h2>Renda mensal</h2><p class="muted small" style="margin-bottom:10px">Com a renda eu calculo quanto você ainda pode gastar no mês.</p><button class="btn small" data-act="rendaEdit">Informar renda</button></div>');
@@ -948,8 +989,9 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
       const usado = v.gasto + v.parcelasPendentes + v.assPend, pct = v.plano.plano ? usado / v.plano.plano * 100 : 0, cls = pct > 100 ? 'bad' : pct > 85 ? 'warn' : 'ok';
       const dias = m === E.ym(today()) ? Math.max(1, new Date(+m.slice(0, 4), +m.slice(5), 0).getDate() - new Date().getDate() + 1) : null;
       h += '<div class="card hero"><div class="row between small muted"><span>Quanto posso gastar no mês</span><span>' + brl0(v.plano.plano) + '</span></div><div style="margin:8px 0 14px">' + bigMoney(v.posso) + ' <span class="muted">' + (v.posso < 0 ? 'acima do plano' : 'livres') + '</span></div><div class="bar ' + cls + '"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:10px"><span>Gastou ' + brl0(v.gasto) + (v.parcelasPendentes ? ' + ' + brl0(v.parcelasPendentes) + ' em parcelas' : '') + (v.assPend ? ' + ' + brl0(v.assPend) + ' em assinaturas' : '') + '</span><span>' + Math.round(pct) + '%</span></div>' +
-        (dias && v.posso > 0 ? '<p class="small" style="margin-top:12px">Dá cerca de <b>' + brl(v.posso / dias) + '</b> por dia até o fim do mês.</p>' : '') + '</div>';
+        '</div>';
     }
+    h += diaCard(v);
     h += '<div class="grid2"><div class="card"><h2>Gastos</h2><div class="mid">' + brl(v.gasto) + '</div></div><div class="card"><h2>Receitas</h2><div class="mid pos">' + brl(v.receita) + '</div></div></div>';
     h += saldoCard();
     const fatMes = (x) => (x.vencimentoISO || (x.vencimento ? x.vencimento.slice(6) + '-' + x.vencimento.slice(3, 5) + '-' + x.vencimento.slice(0, 2) : '')).slice(0, 7);
@@ -1023,11 +1065,29 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     list.forEach((t) => { if (t.data !== last) { last = t.data; h += '<div class="day"><span>' + dm(t.data) + '</span></div>'; } h += txRow(t); });
     return h + '</div>';
   }
+  function catChart() {
+    const m = currentMonth(), q = view.q.trim().toLowerCase(), por = {};
+    S.tx.forEach((t) => {
+      if (view.periodo === 'mes' && E.ym(t.data) !== m) return;
+      if (!E.isExpense(t) || (view.conta && t.conta !== view.conta)) return;
+      if (q && !(t.nome + ' ' + (t.cat || '')).toLowerCase().includes(q)) return;
+      const c = t.cat || 'Sem categoria'; por[c] = (por[c] || 0) - t.valor;
+    });
+    const rows = Object.entries(por).filter(([, v]) => v > 0.004).sort((x, y) => y[1] - x[1]);
+    if (!rows.length) return '';
+    const total = rows.reduce((s, [, v]) => s + v, 0), max = rows[0][1], shown = view.catAll ? rows : rows.slice(0, 5);
+    const nm = view.periodo === 'mes' ? new Date(+m.slice(0, 4), +m.slice(5) - 1, 1).toLocaleDateString('pt-BR', { month: 'long' }) : 'Todo o período';
+    return '<div class="card cchart"><div class="row between" style="margin-bottom:6px"><b>' + esc(view.periodo === 'mes' ? nm.charAt(0).toUpperCase() + nm.slice(1) + ' no Fintrack' : nm) + '</b><span class="muted small">por categoria</span></div>' +
+      shown.map(([c, v]) => { const o = catObj(c), on = view.cat === c; return '<button class="cc-row' + (on ? ' on' : '') + '" data-act="catf" data-c="' + (on ? '' : esc(c)) + '"><span class="cc-ic" style="background:' + o.color + '">' + catIc(c) + '</span><span class="cc-b"><span class="cc-t"><b>' + esc(c) + '</b><b>' + brl(v) + '</b></span><span class="cc-bar"><i style="width:' + Math.max(2, v / max * 100).toFixed(1) + '%;background:' + o.color + '"></i></span></span></button>'; }).join('') +
+      (rows.length > 5 ? '<button class="link" data-act="catAll" style="display:block;margin:8px auto 0">' + (view.catAll ? 'Mostrar menos' : 'Ver todas (' + rows.length + ')') + '</button>' : '') +
+      '<div class="cc-tot"><span class="muted small">' + (view.periodo === 'mes' ? 'Saiu no mês' : 'Saiu no período') + '</span><b>' + brl(total) + '</b></div></div>';
+  }
   function vTransacoes() {
     const usedCats = [...new Set(S.tx.map((t) => t.cat || 'Sem categoria'))].sort();
     let h = '<input class="input" id="qIn" placeholder="Buscar lançamento" value="' + esc(view.q) + '" style="margin-bottom:10px">';
     h += '<div class="seg"><button class="' + (view.periodo === 'mes' ? 'on' : '') + '" data-act="periodo" data-v="mes">Mês</button><button class="' + (view.periodo === 'tudo' ? 'on' : '') + '" data-act="periodo" data-v="tudo">Tudo</button></div>';
     if (view.periodo === 'mes') h += monthNav();
+    h += catChart();
     h += '<div class="chips">' + [['todas', 'Todas'], ['despesas', 'Despesas'], ['receitas', 'Receitas']].map(([k, l]) => '<button class="chip' + (view.tipo === k ? ' on' : '') + '" data-act="tipo" data-v="' + k + '">' + l + '</button>').join('') + '<button class="chip' + (view.conta === 'cc' ? ' on' : '') + '" data-act="conta" data-v="cc">Conta corrente</button><button class="chip' + (view.conta === 'cartao' ? ' on' : '') + '" data-act="conta" data-v="cartao">Cartão</button></div>';
     h += '<div class="chips"><button class="chip' + (!view.cat ? ' on' : '') + '" data-act="catf" data-c="">Todas as categorias</button>' + usedCats.map((c) => '<button class="chip' + (view.cat === c ? ' on' : '') + '" data-act="catf" data-c="' + esc(c) + '"><span class="dot" style="background:' + catObj(c).color + '"></span>' + esc(c) + '</button>').join('') + '</div>';
     h += '<div class="row between" style="padding:4px 2px 8px"><span></span><button class="link" data-act="selMode">' + (view.selMode ? 'Cancelar seleção' : 'Selecionar') + '</button></div>';
@@ -1100,7 +1160,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     let h = back() + '<button class="btn" data-act="subNew" style="margin-bottom:12px">Nova assinatura</button>';
     if (!L.length) return h + '<div class="empty">' + illo('calendar') + 'Adicione suas assinaturas (streaming, apps, planos).<br>Eu considero esse valor no seu planejamento do mês.</div>';
     h += '<div class="card hero"><h2>Assinaturas</h2><div class="big">' + brl(tot) + '</div><p class="muted small">por mês · ' + brl(tot * 12) + ' por ano</p></div>';
-    h += '<div class="card" style="padding:4px 16px">' + L.map((i) => '<div class="tx" data-act="subEdit" data-id="' + i.id + '"><div class="ic" style="background:' + catObj('Assinaturas').color + '22;color:' + catObj('Assinaturas').color + '">' + catIc('Assinaturas') + '</div><div class="mid-col"><div class="nm">' + esc(i.nome) + '</div><div class="muted small">' + (i.forma === 'pix' ? 'PIX' : 'Cartão') + ' · todo dia ' + i.dia + ' · ' + '⭐'.repeat(i.imp || 2) + '</div></div><div class="money">' + brl(i.valor) + '<div class="muted small" style="text-align:right;font-weight:400">por mês</div></div></div>').join('') + '</div>';
+    h += '<div class="card" style="padding:4px 16px">' + L.map((i) => '<div class="tx" data-act="subEdit" data-id="' + i.id + '"><div class="ic" style="background:' + catObj('Assinaturas').color + '22;color:' + catObj('Assinaturas').color + '">' + catIc('Assinaturas') + '</div><div class="mid-col"><div class="nm">' + esc(i.nome) + '</div><div class="muted small">' + (i.forma === 'pix' ? 'PIX' : 'Cartão') + ' · todo dia ' + i.dia + ' · ' + '⭐'.repeat(i.imp || 2) + '</div></div><div class="money">' + brl(i.valor) + '<div class="muted small" style="text-align:right;font-weight:400">por mês</div><div class="muted" style="text-align:right;font-weight:400;font-size:12px;opacity:.85;margin-top:1px">' + brl(i.valor * 12) + ' por ano</div></div></div>').join('') + '</div>';
     return h;
   }
   const ring = (pct, size, sw, col) => { const r = (size - sw) / 2, c = 2 * Math.PI * r, p = Math.min(100, Math.max(0, pct)); return '<svg class="rg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '"><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="' + sw + '"/><circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="' + (col || 'var(--accent)') + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-dasharray="' + (c * p / 100).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/></svg>'; };
@@ -1221,7 +1281,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   /* ---------- ações ---------- */
   const A = {
     go: (el) => { closeSheet(); view.name = el.dataset.v; view.selMode = false; view.sel.clear(); render(); window.scrollTo(0, 0); },
-    menu: () => openSheet('<p class="muted small">Conectada como <b>' + esc(nick) + '</b></p><h3 class="serif" style="font-size:30px">Menu</h3><div class="card" style="padding:4px 16px;margin-top:12px">' + [['resumo', 'Visão geral'], ['orcamento', 'Orçamento'], ['transacoes', 'Transações'], ['decidir', 'Decidir'], ['parcelas', 'Parcelamentos'], ['recorrentes', 'Assinaturas'], ['metas', 'Metas'], ['reserva', 'Reserva de emergência'], ['ajustes', 'Ajustes']].map(([k, l]) => '<button class="menu-item" data-act="go" data-v="' + k + '"><b>' + l + '</b><span class="muted">›</span></button>').join('') + '<button class="menu-item" data-act="logout"><b>Sair</b><span class="muted">›</span></button></div>'),
+    menu: () => openSheet('<p class="muted small">Conectada como <b>' + esc(nick) + '</b></p><h3 class="serif" style="font-size:30px">Menu</h3><div class="card" style="padding:4px 16px;margin-top:12px">' + [['resumo', 'Visão geral'], ['orcamento', 'Orçamento'], ['transacoes', 'Transações'], ['decidir', 'Decidir'], ['parcelas', 'Parcelamentos'], ['recorrentes', 'Assinaturas'], ['metas', 'Metas'], ['reserva', 'Reserva de emergência'], ['ajustes', 'Ajustes']].map(([k, l]) => '<button class="menu-item" data-act="go" data-v="' + k + '"><b>' + l + '</b><span class="muted">›</span></button>').join('') + '<button class="menu-item" data-act="novidades"><b>O que tem de novo</b><span class="muted">›</span></button><button class="menu-item" data-act="logout"><b>Sair</b><span class="muted">›</span></button></div>'),
     toggleTheme: () => { S.settings.tema = isDark() ? 'light' : 'dark'; applyTheme(); save(); render(); },
     mnow: () => { view.month = null; render(); },
     plus: sheetPlus, closeSheet,
@@ -1248,6 +1308,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     delTx: () => { if (!confirm('Excluir este lançamento?')) return; S.tx = S.tx.filter((x) => x.id !== editingId); save(); closeSheet(); render(); },
     mprev: () => { view.month = E.addMonths(currentMonth(), -1); render(); }, mnext: () => { view.month = E.addMonths(currentMonth(), 1); render(); },
     periodo: (el) => { view.periodo = el.dataset.v; render(); }, tipo: (el) => { view.tipo = el.dataset.v; render(); },
+    catAll: () => { view.catAll = !view.catAll; render(); },
     conta: (el) => { view.conta = view.conta === el.dataset.v ? '' : el.dataset.v; render(); }, catf: (el) => { view.cat = el.dataset.c; render(); },
     goCat: (el) => { closeSheet(); view.name = 'transacoes'; view.cat = el.dataset.c; view.tipo = 'despesas'; view.periodo = 'mes'; render(); window.scrollTo(0, 0); },
     goAjustes: () => { view.name = 'ajustes'; render(); },
@@ -1331,6 +1392,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     exportBk: () => { const { _seen, ...clean } = S; const b = new Blob([JSON.stringify(clean)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'fintrack-backup-' + today() + '.json'; a.click(); },
     importBk: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json'; i.onchange = async () => { try { const d = JSON.parse(await i.files[0].text()); if (!d.tx || !d.cats) throw 0; if (!confirm('Substituir os dados atuais pelo backup?')) return; S = normalize(d); save(); render(); toastMsg('Backup importado'); } catch (e) { toastMsg('Arquivo de backup inválido.'); } }; i.click(); },
     wipe: () => { if (!confirm('Apagar TODOS os dados? Isso não pode ser desfeito.')) return; S = E.newState(); save(); view.month = null; render(); toastMsg('Dados apagados'); },
+    novidades: () => { closeSheet(); openSheet(novidadesHtml()); },
     logout: async () => { closeSheet(); if (confirm('Sair deste aparelho?')) await doLogout(false); },
     toggleLogin: () => { loginMode = loginMode === 'login' ? 'register' : 'login'; showLogin(); }, doLogin: doLoginAct
   };
