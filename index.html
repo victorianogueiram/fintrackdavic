@@ -669,8 +669,8 @@ window.FT_CONFIG = {
     const pend = r2(P.filter(p => p.meses[0] === month).reduce((s, p) => s + p.valor, 0));
     const ass = assinaturasMes(S, month);
     const cts = contasDoMes(S, month);
-    const posso = pl.plano ? r2(pl.plano - st.gasto - pend - cts.pendente) : null;
-    return { month, ...st, plano: pl, parcelasPendentes: pend, assPend: 0, assTotal: ass.total, contasPend: cts.pendente, posso };
+    const posso = pl.plano ? r2(pl.plano - st.gasto - pend) : null;
+    return { month, ...st, plano: pl, parcelasPendentes: pend, assPend: 0, assTotal: ass.total, contasPend: 0, posso };
   }
 
   /* sugestão de limites após >=2 meses completos: média por categoria */
@@ -906,26 +906,27 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   }
 
   /* ---------- novidades (aparece 1x por atualização) ---------- */
-  const VERSAO = '2026-11-05';
+  const VERSAO = '2026-11-05b';
   const NOVIDADES = [
-    ['Conta corrente', 'Agora você lança receitas e gastos da conta na mão (botão +), sem precisar de extrato. A fatura do cartão continua funcionando, só que opcional.'],
-    ['Resumo', 'Novo card "Cartão até agora" (só compras no cartão) e "Gastos" só da conta corrente. A fatura do cartão some quando você toca em "Já paguei".'],
-    ['Assinaturas', 'Agora são só para o seu controle e não descontam do orçamento.'],
-    ['Despesas', 'Nova aba para as contas do mês (aluguel, luz, internet...), fixas e variáveis, com saída, vencimento e "pago". O total entra no orçamento; o "pago" é só para você marcar.'],
-    ['Transações', 'Gráfico de gastos por categoria antes da lista. Toque numa categoria para filtrar.'],
-    ['Resumo', 'Novo card "Para gastar hoje", com quanto sobra por dia e até domingo.'],
-    ['Assinaturas', 'Cadastro manual com cartão ou PIX, dia da cobrança, importância de 1 a 3 estrelas e valor por ano.'],
-    ['Decidir', 'Resultado novo, com "Mudar a compra" e "Virar meta". Decisões para amanhã viram a fila "Para decidir hoje".'],
-    ['Metas', 'Imagem em cada meta e status de ritmo (no ritmo, atrasada) pelo valor guardado e pelo prazo.'],
-    ['Categorias', 'Telas de conferência e novo gasto com quadradinhos e ícones suaves.']
+    ['Conta corrente', 'Agora você lança receitas e gastos da conta na mão (botão +), sem precisar de extrato. A fatura do cartão continua funcionando, só que opcional.', '2026-11-04d'],
+    ['Despesas', 'Agora são só um checklist de contas a pagar e não entram na conta do orçamento (o que você lança como gasto já conta lá).', '2026-11-05b'],
+    ['Resumo', 'Novo card "Cartão até agora" (só compras no cartão) e "Gastos" só da conta corrente. A fatura do cartão some quando você toca em "Já paguei".', '2026-11-05'],
+    ['Assinaturas', 'Agora são só para o seu controle e não descontam do orçamento.', '2026-11-04e'],
+    ['Transações', 'Gráfico de gastos por categoria antes da lista. Toque numa categoria para filtrar.', '2026-11-04'],
+    ['Resumo', 'Novo card "Para gastar hoje", com quanto sobra por dia e até domingo.', '2026-11-04'],
+    ['Assinaturas', 'Cadastro manual com cartão ou PIX, dia da cobrança, importância de 1 a 3 estrelas e valor por ano.', '2026-11-04'],
+    ['Decidir', 'Resultado novo, com "Mudar a compra" e "Virar meta". Decisões para amanhã viram a fila "Para decidir hoje".', '2026-11-04'],
+    ['Metas', 'Imagem em cada meta e status de ritmo (no ritmo, atrasada) pelo valor guardado e pelo prazo.', '2026-11-04'],
+    ['Categorias', 'Telas de conferência e novo gasto com quadradinhos e ícones suaves.', '2026-11-04']
   ];
-  function novidadesHtml() { return sheetHead('O que tem de novo', null) + '<p class="muted small" style="margin:2px 0 12px">Atualização de ' + VERSAO.split('-').reverse().join('/') + '</p><div class="card" style="padding:4px 16px">' + NOVIDADES.map(([t, d]) => '<div style="padding:12px 0;border-bottom:1px solid var(--line)"><b>' + esc(t) + '</b><p class="muted small" style="margin-top:2px">' + esc(d) + '</p></div>').join('') + '</div><div style="height:14px"></div><button class="btn" data-act="closeSheet">Entendi</button>'; }
+  function novidadesHtml(desde) { const L = NOVIDADES.filter((n) => !desde || n[2] > desde); return sheetHead('O que tem de novo', null) + '<p class="muted small" style="margin:2px 0 12px">Atualização de ' + VERSAO.slice(0, 10).split('-').reverse().join('/') + '</p><div class="card" style="padding:4px 16px">' + L.map(([t, d]) => '<div style="padding:12px 0;border-bottom:1px solid var(--line)"><b>' + esc(t) + '</b><p class="muted small" style="margin-top:2px">' + esc(d) + '</p></div>').join('') + '</div><div style="height:14px"></div><button class="btn" data-act="closeSheet">Entendi</button>'; }
   function showNovidades() {
     const k = 'ft2_ver', seen = Cloud.LS.get(k);
     if (seen === VERSAO) return false;
     Cloud.LS.set(k, VERSAO);
     if (!seen && !S.tx.length && !S.metas.length) return false; // primeiro acesso de verdade
-    openSheet(novidadesHtml()); return true;
+    if (seen && !NOVIDADES.some((n) => n[2] > seen)) return false; // nada novo desde a última vez
+    openSheet(novidadesHtml(seen)); return true;
   }
 
   /* ---------- boot ---------- */
@@ -1191,7 +1192,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
   function vDespesas() {
     const m = currentMonth(), cm = E.contasDoMes(S, m), nomeMes = E.monthLabel(m).split(' de ')[0];
     let h = monthNav() + '<button class="btn" data-act="ctNew" style="margin-bottom:12px">Nova despesa</button>';
-    if (!cm.rows.length) return h + '<div class="empty">' + illo('calendar') + 'Cadastre suas contas do mês: aluguel, luz, internet, mensalidades.<br>Eu desconto esse valor do que sobra no orçamento.</div>';
+    if (!cm.rows.length) return h + '<div class="empty">' + illo('calendar') + 'Cadastre suas contas do mês: aluguel, luz, internet, mensalidades.<br>É só para você acompanhar e marcar o que já pagou.</div>';
     const pct = cm.total ? cm.pago / cm.total * 100 : 0;
     h += '<div class="card hero"><div class="row between small muted"><span>Despesas de ' + esc(nomeMes) + '</span><span>' + Math.round(pct) + '% pago</span></div><div style="margin:8px 0 12px">' + bigMoney(cm.total) + '</div><div class="bar ok"><i style="width:' + Math.min(100, pct) + '%"></i></div><div class="row between small muted" style="margin-top:10px"><span>Pago ' + brl0(cm.pago) + '</span><span>Falta pagar ' + brl0(cm.falta) + '</span></div></div>';
     [['fixa', 'Despesas fixas'], ['variavel', 'Despesas variáveis']].forEach(([tp, titulo]) => {
@@ -1448,7 +1449,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     exportBk: () => { const { _seen, ...clean } = S; const b = new Blob([JSON.stringify(clean)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'fintrack-backup-' + today() + '.json'; a.click(); },
     importBk: () => { const i = document.createElement('input'); i.type = 'file'; i.accept = '.json'; i.onchange = async () => { try { const d = JSON.parse(await i.files[0].text()); if (!d.tx || !d.cats) throw 0; if (!confirm('Substituir os dados atuais pelo backup?')) return; S = normalize(d); save(); render(); toastMsg('Backup importado'); } catch (e) { toastMsg('Arquivo de backup inválido.'); } }; i.click(); },
     wipe: () => { if (!confirm('Apagar TODOS os dados? Isso não pode ser desfeito.')) return; S = E.newState(); save(); view.month = null; render(); toastMsg('Dados apagados'); },
-    novidades: () => { closeSheet(); openSheet(novidadesHtml()); },
+    novidades: () => { closeSheet(); openSheet(novidadesHtml('')); },
     logout: async () => { closeSheet(); if (confirm('Sair deste aparelho?')) await doLogout(false); },
     toggleLogin: () => { loginMode = loginMode === 'login' ? 'register' : 'login'; showLogin(); }, doLogin: doLoginAct
   };
@@ -1458,7 +1459,7 @@ window.FT_ICONS = {"fork-knife":"<path d=\"M74,88V40a6,6,0,0,1,12,0V88a6,6,0,0,1
     ctTipo = c ? c.tipo || 'fixa' : 'fixa'; ctSaida = c ? c.saida || 'cc' : 'cc';
     const m = currentMonth(), ov = c ? (((S.contasMes || {})[m] || {})[c.id] || {}) : {}, val = c ? (ov.valor != null ? ov.valor : c.valor) : '';
     const pills = (id, act, opts, sel) => '<div class="pills" id="' + id + '">' + opts.map(([k, l]) => '<button class="pill' + (sel === k ? ' on' : '') + '" data-act="' + act + '" data-v="' + k + '">' + l + '</button>').join('') + '</div>';
-    openSheet(sheetHead(c ? 'Editar despesa' : 'Nova despesa') + '<div class="item-card"><span class="il">Valor</span><input class="bare big-in" id="cVal" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + (val !== '' ? fmtIn(val) : '') + '"><input class="bare nm-in" id="cNome" placeholder="Nome, ex.: Aluguel, Internet" value="' + esc(c ? c.nome : '') + '"><span class="il" style="display:block;margin-top:12px">Tipo</span>' + pills('ctTipos', 'ctTipo', [['fixa', 'Fixa'], ['variavel', 'Variável']], ctTipo) + '<span class="il" style="display:block;margin-top:12px">Saída</span>' + pills('ctSaidas', 'ctSaida', [['cc', 'Conta corrente'], ['cartao', 'Cartão'], ['outra', 'Outra fonte']], ctSaida) + '<p class="muted small" style="margin-top:6px">"Outra fonte" (ex.: auxílio home office) não pesa no seu orçamento.</p><span class="il" style="display:block;margin-top:12px">Dia do vencimento (opcional)</span><input class="bare nm-in" id="cDia" inputmode="numeric" maxlength="2" placeholder="Ex.: 10" value="' + (c && c.dia ? c.dia : '') + '"></div>' +
+    openSheet(sheetHead(c ? 'Editar despesa' : 'Nova despesa') + '<div class="item-card"><span class="il">Valor</span><input class="bare big-in" id="cVal" inputmode="numeric" data-mask="money" placeholder="R$ 0,00" value="' + (val !== '' ? fmtIn(val) : '') + '"><input class="bare nm-in" id="cNome" placeholder="Nome, ex.: Aluguel, Internet" value="' + esc(c ? c.nome : '') + '"><span class="il" style="display:block;margin-top:12px">Tipo</span>' + pills('ctTipos', 'ctTipo', [['fixa', 'Fixa'], ['variavel', 'Variável']], ctTipo) + '<span class="il" style="display:block;margin-top:12px">Saída</span>' + pills('ctSaidas', 'ctSaida', [['cc', 'Conta corrente'], ['cartao', 'Cartão'], ['outra', 'Outra fonte']], ctSaida) + '<p class="muted small" style="margin-top:6px">"Outra fonte": por exemplo, auxílio home office.</p><span class="il" style="display:block;margin-top:12px">Dia do vencimento (opcional)</span><input class="bare nm-in" id="cDia" inputmode="numeric" maxlength="2" placeholder="Ex.: 10" value="' + (c && c.dia ? c.dia : '') + '"></div>' +
       '<p class="muted small" style="margin:10px 4px 0">Variável: o valor vale só para ' + esc(E.monthLabel(m)) + '. Fixa: vale para todos os meses.</p><div style="height:16px"></div><div class="stack"><button class="btn" data-act="saveConta" data-id="' + (c ? c.id : '') + '">Salvar</button>' + (c ? '<button class="btn danger" data-act="delConta" data-id="' + c.id + '">Excluir</button>' : '') + '</div>');
   }
   let subForma = 'cartao', subImp = 2;
